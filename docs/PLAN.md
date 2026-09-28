@@ -1,5 +1,10 @@
 # Natural Fruver Pereira — Online Catalog Plan
 
+> **Status:** phases 1–5 are implemented (see README.md). A few things differ from the original plan:
+> - Workers log in with a **per-worker PIN** (tab `Trabajadores`) instead of Google accounts. It's simpler on shared phones, and changes are still attributed to a person.
+> - The worker page is a static `site/admin.html` calling the same Apps Script API, not an Apps Script-hosted page.
+> - Real product data is still pending: Instagram was not reachable from the build environment.
+
 ## Context
 A friend runs **Natural Fruver Pereira**, a fruit & vegetable store that currently sells through Instagram posts and WhatsApp. We're building them a catalog that:
 1. lets **customers** find products fast and order via WhatsApp,

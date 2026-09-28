@@ -73,6 +73,7 @@ function adminData_() {
     productos: products,
     categorias: categories,
     unidades: ['kg', 'lb', 'unidad', 'atado', 'canasta', 'paquete', 'bandeja'],
+    stock_minimo: num_(getConfig_().stock_minimo_alerta, 2),
     pedidos: open.concat(closed)
   };
 }
