@@ -124,7 +124,8 @@ test('full order: cart → delivery → address → name → confirm, stock and 
   out = send(env, CUSTOMER, text('Ana Gómez'));
   const summary = bodyOf(out[0]);
   assert.match(summary, /Domicilio: \$4\.000/);
-  assert.match(summary, /Total: \$17\.000/);
+  assert.match(summary, /Total aprox\.: \$17\.000/);
+  assert.match(summary, /puede variar un poco según el peso/);
   assert.match(summary, /Cra 7 # 20-30/);
   assert.deepEqual(buttonIds(out[0]), ['ok', 'nota', 'cancelar']);
 
@@ -177,7 +178,7 @@ test('a product that sells out before confirming is removed and explained', () =
   const t = env.gs.table_('Productos');
   env.gs.setCell_(t, t.rows.find((p) => p.id === 'fresa'), 'stock', 0);
   const out = send(env, CUSTOMER, reply('ok'));
-  assert.match(bodyOf(out[0]), /se agotó:\n• Fresa/);
+  assert.match(bodyOf(out[0]), /cambió:\n• Fresa \(agotado\)/);
   assert.match(bodyOf(out[1]), /Revisa tu pedido/);
   assert.doesNotMatch(bodyOf(out[1]), /Fresa/);
   assert.equal(env.gs.table_('Pedidos').rows.length, 0);
@@ -298,7 +299,7 @@ test('store hours: open now, closing time and next opening', () => {
   const env = setupBot();
   const h = 'lun-vie 08:30-18:00; sab-dom 08:30-16:00';
   const at = (iso) => new Date(iso);
-  const state = (d) => JSON.parse(JSON.stringify(env.gs.openState_(h, d)));
+  const state = (d) => { const s = env.gs.openState_(h, d); return { open: s.open, text: s.text }; };
   assert.deepEqual(state(at('2026-09-28T15:00:00Z')), { open: true, text: 'Abierto · cierra 6:00 p. m.' }); // lunes 10:00
   assert.deepEqual(state(at('2026-09-27T22:00:00Z')), { open: false, text: 'Cerrado · abre mañana 8:30 a. m.' }); // domingo 17:00
   assert.deepEqual(state(at('2026-10-03T12:00:00Z')), { open: false, text: 'Cerrado · abre hoy 8:30 a. m.' }); // sábado 7:00

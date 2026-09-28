@@ -10,28 +10,45 @@ var SHEETS = {
   ORDERS: 'Pedidos',
   CONFIG: 'Config',
   WORKERS: 'Trabajadores',
-  CLIENTS: 'Clientes'
+  CLIENTS: 'Clientes',
+  UNITS: 'Unidades',
+  USAGE: 'Uso',
+  UNRESOLVED: 'SinResolver',
+  AUDIT: 'Registro'
 };
+
+// Súbelo cuando cambien las columnas: migrateSchema_ agrega las que falten en hojas ya creadas.
+var SCHEMA_VERSION = 2;
 
 var PRODUCT_HEADERS = [
   'id', 'nombre', 'categoria', 'precio', 'unidad', 'precio_oferta', 'oferta_hasta',
   'stock', 'disponible', 'destacado', 'foto_url', 'descripcion', 'palabras_clave',
-  'orden', 'archivado', 'actualizado', 'actualizado_por', 'en_whatsapp'
+  'orden', 'archivado', 'actualizado', 'actualizado_por', 'en_whatsapp', 'alias', 'max_cantidad'
 ];
 var CATEGORY_HEADERS = ['nombre', 'icono', 'orden'];
 var ORDER_HEADERS = [
   'nro', 'fecha', 'estado', 'cliente', 'telefono', 'entrega', 'direccion', 'notas',
-  'items', 'subtotal', 'domicilio', 'total', 'actualizado', 'actualizado_por'
+  'items', 'subtotal', 'domicilio', 'total', 'actualizado', 'actualizado_por',
+  'pago', 'clave', 'aviso', 'aviso_intentos', 'estado_anterior', 'revisar'
 ];
 var CONFIG_HEADERS = ['clave', 'valor', 'nota'];
 var WORKER_HEADERS = ['nombre', 'pin', 'activo', 'whatsapp'];
 // Clientes del bot de WhatsApp: datos guardados y en qué paso de la conversación van.
-var CLIENT_HEADERS = ['telefono', 'nombre', 'direccion', 'paso', 'datos', 'actualizado'];
+var CLIENT_HEADERS = [
+  'telefono', 'nombre', 'direccion', 'paso', 'datos', 'actualizado',
+  'ultimo_mensaje', 'consentimiento', 'baja', 'bloqueado', 'asesor', 'asesor_desde', 'asesor_motivo',
+  'asesor_ultimo', 'recordatorio'
+];
+var UNIT_HEADERS = ['unidad', 'sinonimos', 'gramos'];
+var USAGE_HEADERS = ['fecha', 'cliente', 'funcion', 'modelo', 'entrada', 'cache_lectura', 'cache_escritura', 'salida', 'costo_usd'];
+var UNRESOLVED_HEADERS = ['fecha', 'cliente', 'texto', 'motivo'];
+var AUDIT_HEADERS = ['fecha', 'quien', 'cliente', 'accion', 'detalle'];
 
 // Carpeta de las fotos que vienen con la página (relativa a site/).
 var PHOTO_DIR = 'img/productos/';
 
-var ORDER_STATES = ['pendiente', 'confirmado', 'entregado', 'cancelado'];
+var ORDER_STATES = ['pendiente', 'confirmado', 'en_preparacion', 'en_camino', 'entregado', 'cancelado'];
+var STATE_LABELS = { pendiente: 'pendiente', confirmado: 'confirmado', en_preparacion: 'en preparación', en_camino: 'en camino', entregado: 'entregado', cancelado: 'cancelado' };
 var FINAL_STATES = ['entregado', 'cancelado'];
 var DECIMAL_UNITS = ['kg', 'lb'];
 
@@ -72,6 +89,41 @@ function setCell_(t, rowObj, header, value) {
   if (col < 0) throw new Error('Columna desconocida: ' + header);
   t.sh.getRange(rowObj._row, col + 1).setValue(value);
   rowObj[header] = value;
+}
+
+/**
+ * Agrega pestañas y columnas nuevas a hojas creadas con una versión anterior.
+ * Corre una vez por versión (se guarda en Propiedades del script).
+ */
+function migrateSchema_() {
+  var props = PropertiesService.getScriptProperties();
+  if (String(props.getProperty('SCHEMA_VERSION') || '') === String(SCHEMA_VERSION)) return false;
+  var ss = ss_();
+  if (!ss.getSheetByName(SHEETS.CONFIG)) return false; // sin configurar todavía
+  [[SHEETS.PRODUCTS, PRODUCT_HEADERS], [SHEETS.ORDERS, ORDER_HEADERS], [SHEETS.CLIENTS, CLIENT_HEADERS],
+    [SHEETS.UNITS, UNIT_HEADERS], [SHEETS.USAGE, USAGE_HEADERS], [SHEETS.UNRESOLVED, UNRESOLVED_HEADERS],
+    [SHEETS.AUDIT, AUDIT_HEADERS]].forEach(function (x) { ensureSheet_(ss, x[0], x[1]); });
+  addMissingConfig_();
+  props.setProperty('SCHEMA_VERSION', String(SCHEMA_VERSION));
+  return true;
+}
+
+/** Agrega al final de una pestaña; si la pestaña no existe, no hace nada. */
+function appendLog_(name, obj) {
+  try {
+    var sh = ss_().getSheetByName(name);
+    if (!sh) return;
+    var t = table_(name);
+    writeRow_(t, obj);
+  } catch (e) {
+    console.warn('No se pudo registrar en ' + name + ': ' + e);
+  }
+}
+
+/** Últimos 4 dígitos de un teléfono, para registros sin datos personales completos. */
+function last4_(phone) {
+  var d = String(phone || '').replace(/\D/g, '');
+  return d ? '…' + d.slice(-4) : '';
 }
 
 function getConfig_() {
@@ -135,10 +187,12 @@ function isDecimalUnit_(unidad) {
   return DECIMAL_UNITS.indexOf(String(unidad || '').trim().toLowerCase()) >= 0;
 }
 
-/** Redondea la cantidad al paso de la unidad (0.5 para kg/lb, 1 para el resto). */
+/** Redondea la cantidad al paso de la unidad (0.25 kg = media libra, 0.5 lb, 1 para el resto). */
 function roundQty_(qty, unidad) {
   var q = num_(qty, 0);
-  if (isDecimalUnit_(unidad)) return Math.round(q * 2) / 2;
+  var u = String(unidad || '').trim().toLowerCase();
+  if (u === 'kg') return Math.round(q * 4) / 4;
+  if (u === 'lb') return Math.round(q * 2) / 2;
   return Math.round(q);
 }
 

@@ -146,6 +146,7 @@ function createEnv() {
       formatDate,
       base64Decode: (s) => Buffer.from(s, 'base64'),
       getUuid: () => require('crypto').randomUUID(),
+      sleep: () => {},
       newBlob: (bytes, type, name) => ({ bytes, type, name })
     },
     DriveApp: {
@@ -178,10 +179,18 @@ function createEnv() {
     MailApp: { sendEmail: (to, subject, body) => sentMail.push({ to, subject, body }) },
     UrlFetchApp: {
       fetch(url, opts) {
-        const payload = opts && opts.payload ? JSON.parse(opts.payload) : null;
+        let payload = null;
+        if (opts && typeof opts.payload === 'string') { try { payload = JSON.parse(opts.payload); } catch (e) { payload = opts.payload; } }
+        else if (opts && opts.payload) payload = opts.payload;
         fetches.push({ url, payload, headers: (opts && opts.headers) || {} });
-        const r = (net.reply && net.reply(url, payload)) || { status: 200, body: { messages: [{ id: 'wamid.out' }] } };
-        return { getResponseCode: () => r.status, getContentText: () => JSON.stringify(r.body) };
+        const r = (net.reply && net.reply(url, payload, opts)) || { status: 200, body: { messages: [{ id: 'wamid.out' + fetches.length }] } };
+        if (r.throws) throw new Error(r.throws);
+        const text = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
+        return {
+          getResponseCode: () => r.status,
+          getContentText: () => text,
+          getContent: () => (r.bytes ? Array.from(r.bytes) : Array.from(Buffer.from(text)))
+        };
       }
     },    ScriptApp: {
       getProjectTriggers: () => [],

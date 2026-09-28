@@ -111,7 +111,7 @@ test('telegram runner: menu → catalog → cart → pickup → confirm → work
     await next('nombre', (c) => /A nombre de quién/.test(c.params.text || ''));
     fake.text('Ana Prueba');
     m = await next('resumen', (c) => c.params.reply_markup && keys(c).includes('ok'));
-    assert.match(m.params.text, /Total: \$12\.000/);
+    assert.match(m.params.text, /Total aprox\.: \$12\.000/);
 
     fake.tap('ok');
     m = await next('confirmación', (c) => /Pedido NF-0001 recibido/.test(c.params.text || ''));

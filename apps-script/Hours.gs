@@ -47,7 +47,7 @@ function parseDays_(text) {
 function localNow_(date) {
   var s = Utilities.formatDate(date || new Date(), tz_(), 'yyyy-MM-dd HH:mm');
   var day = new Date(s.slice(0, 10) + 'T12:00:00Z').getUTCDay();
-  return { day: day, min: Number(s.slice(11, 13)) * 60 + Number(s.slice(14, 16)) };
+  return { day: day, min: Number(s.slice(11, 13)) * 60 + Number(s.slice(14, 16)), date: s.slice(0, 10) };
 }
 
 function fmtTime_(min) {
@@ -57,28 +57,57 @@ function fmtTime_(min) {
   return h12 + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? ' a. m.' : ' p. m.');
 }
 
-/** { open, text: 'Abierto · cierra 6:00 p. m.' } o null si no hay horario. */
-function openState_(hoursText, date) {
+function addDaysStr_(dateStr, n) {
+  var d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return ymd_(d);
+}
+
+/**
+ * Horarios de un día concreto, teniendo en cuenta los festivos.
+ * holidayText: Config horario_festivos ("cerrado", "08:30-14:00" o vacío = sin confirmar).
+ * Devuelve { ranges, holiday, unknown }.
+ */
+function rangesForDate_(hours, dateStr, weekday, holidayText) {
+  if (!isHoliday_(dateStr)) return { ranges: hours[weekday] || [], holiday: false, unknown: false };
+  var h = normalize_(holidayText);
+  if (!h) return { ranges: hours[weekday] || [], holiday: true, unknown: true };
+  if (h === 'cerrado') return { ranges: [], holiday: true, unknown: false };
+  var parsed = parseHours_('lun a dom ' + String(holidayText));
+  return { ranges: parsed[weekday] || [], holiday: true, unknown: false };
+}
+
+/**
+ * { open, text: 'Abierto · cierra 6:00 p. m.', holiday, unknown } o null si no hay horario.
+ * holidayText es opcional (Config horario_festivos).
+ */
+function openState_(hoursText, date, holidayText) {
   var hours = parseHours_(hoursText);
   if (!Object.keys(hours).length) return null;
   var now = localNow_(date);
-  var today = hours[now.day] || [];
+  var todayInfo = rangesForDate_(hours, now.date, now.day, holidayText);
+  var note = todayInfo.unknown ? ' (hoy es festivo: el horario puede cambiar)' : '';
+  var today = todayInfo.ranges;
   for (var i = 0; i < today.length; i++) {
     if (now.min >= today[i][0] && now.min < today[i][1]) {
-      return { open: true, text: 'Abierto · cierra ' + fmtTime_(today[i][1]) };
+      return { open: true, text: 'Abierto · cierra ' + fmtTime_(today[i][1]) + note, holiday: todayInfo.holiday, unknown: todayInfo.unknown };
     }
   }
-  for (var add = 0; add < 7; add++) {
+  for (var add = 0; add < 8; add++) {
     var d = (now.day + add) % 7;
-    var ranges = (hours[d] || []).slice().sort(function (a, b) { return a[0] - b[0]; });
+    var info = add === 0 ? todayInfo : rangesForDate_(hours, addDaysStr_(now.date, add), d, holidayText);
+    var ranges = info.ranges.slice().sort(function (a, b) { return a[0] - b[0]; });
     for (var j = 0; j < ranges.length; j++) {
       if (add > 0 || ranges[j][0] > now.min) {
         var when = add === 0 ? 'hoy' : add === 1 ? 'mañana' : 'el ' + DAY_NAMES[d];
-        return { open: false, text: 'Cerrado · abre ' + when + ' ' + fmtTime_(ranges[j][0]) };
+        return {
+          open: false, text: 'Cerrado · abre ' + when + ' ' + fmtTime_(ranges[j][0]) + (info.unknown ? ' (es festivo: por confirmar)' : note),
+          holiday: todayInfo.holiday, unknown: todayInfo.unknown || info.unknown
+        };
       }
     }
   }
-  return { open: false, text: 'Cerrado' };
+  return { open: false, text: 'Cerrado', holiday: todayInfo.holiday, unknown: todayInfo.unknown };
 }
 
 /** Horario legible, una línea por grupo de días. */

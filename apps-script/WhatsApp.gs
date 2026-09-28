@@ -25,28 +25,83 @@ function secret_(key) {
   return PropertiesService.getScriptProperties().getProperty(key) || '';
 }
 
-/** Llamada a la API Graph. Devuelve { ok, status, body }; nunca lanza por errores de Meta. */
+/**
+ * Llamada a la API Graph. Devuelve { ok, status, body }; nunca lanza por errores de Meta.
+ * Reintenta 2 veces (1 s, 3 s) si Meta responde 429/5xx o falla la red.
+ */
 function graph_(path, payload, method) {
   var token = secret_('WA_TOKEN');
   if (!token) return { ok: false, status: 0, body: { error: { message: 'Falta WA_TOKEN' } } };
-  var res = UrlFetchApp.fetch(GRAPH_URL + path, {
-    method: method || 'post',
-    contentType: 'application/json',
-    headers: { Authorization: 'Bearer ' + token },
-    payload: payload ? JSON.stringify(payload) : undefined,
-    muteHttpExceptions: true
-  });
-  var status = res.getResponseCode();
-  var body;
-  try { body = JSON.parse(res.getContentText() || '{}'); } catch (e) { body = {}; }
-  if (status >= 300) console.warn('WhatsApp API ' + status + ': ' + JSON.stringify(body).slice(0, 500));
-  return { ok: status < 300, status: status, body: body };
+  var status = 0, body = {};
+  for (var attempt = 0; attempt < 3; attempt++) {
+    if (attempt) Utilities.sleep(attempt === 1 ? 1000 : 3000);
+    try {
+      var res = UrlFetchApp.fetch(GRAPH_URL + path, {
+        method: method || 'post',
+        contentType: 'application/json',
+        headers: { Authorization: 'Bearer ' + token },
+        payload: payload ? JSON.stringify(payload) : undefined,
+        muteHttpExceptions: true
+      });
+      status = res.getResponseCode();
+      try { body = JSON.parse(res.getContentText() || '{}'); } catch (e) { body = {}; }
+    } catch (err) {
+      status = 0;
+      body = { error: { message: String(err) } };
+    }
+    if (status && status < 300) return { ok: true, status: status, body: body };
+    if (status && status !== 429 && status < 500) break; // error definitivo (400, 401, 131047…)
+  }
+  console.warn('WhatsApp API ' + status + ': ' + JSON.stringify(body).slice(0, 500));
+  return { ok: false, status: status, body: body };
 }
 
-function waSend_(to, message) {
+/**
+ * Envía un mensaje. opts: { direct: true } salta el modo sombra (avisos internos);
+ * { purpose, nro } recuerda para qué era, para reaccionar si Meta avisa que falló.
+ */
+function waSend_(to, message, opts) {
+  opts = opts || {};
+  if (!opts.direct && shadowMode_() && !workerByPhone_(to)) return shadowDraft_(to, message);
   var payload = { messaging_product: 'whatsapp', recipient_type: 'individual', to: String(to) };
   Object.keys(message).forEach(function (k) { payload[k] = message[k]; });
-  return graph_(secret_('WA_PHONE_ID') + '/messages', payload);
+  var res = graph_(secret_('WA_PHONE_ID') + '/messages', payload);
+  bumpMetric_(res.ok ? 'enviados' : 'fallos_envio');
+  var id = res.ok && res.body && res.body.messages && res.body.messages[0] && res.body.messages[0].id;
+  if (id && opts.purpose) {
+    CacheService.getScriptCache().put('out_' + id, JSON.stringify({ purpose: opts.purpose, nro: opts.nro || '', to: String(to) }), 21600);
+  }
+  return res;
+}
+
+// ─────────────── Modo sombra: los trabajadores aprueban cada respuesta ───────────────
+
+function shadowMode_() {
+  try { return normalize_(getConfig_().modo_bot) === 'sombra'; } catch (e) { return false; }
+}
+
+/** Guarda el borrador y se lo muestra a los trabajadores con botones Enviar / Descartar. */
+function shadowDraft_(to, message) {
+  var id = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
+  CacheService.getScriptCache().put('draft_' + id, JSON.stringify({ to: String(to), message: message }), 21600);
+  var preview = message.type === 'text' ? message.text.body
+    : message.type === 'interactive' ? ((message.interactive.body || {}).text || '') + '\n[' + message.interactive.type + ']'
+      : '[' + message.type + ']';
+  alertStaff_('📝 *Borrador para +' + to + '*\n\n' + cut_(preview, 800), [
+    { id: 'dr:ok:' + id, title: '✅ Enviar' },
+    { id: 'dr:no:' + id, title: '🗑️ Descartar' }
+  ]);
+  return { ok: true, status: 200, body: {}, shadow: true };
+}
+
+function sendDraft_(id, approve) {
+  var cache = CacheService.getScriptCache();
+  var raw = cache.get('draft_' + id);
+  if (!raw) return 'vencido';
+  cache.remove('draft_' + id);
+  if (!approve) return 'descartado';
+  var d = JSON.parse(raw);
+  return waSend_(d.to, d.message, { direct: true }).ok ? 'enviado' : 'fallido';
 }
 
 function cut_(s, max) {
@@ -54,12 +109,12 @@ function cut_(s, max) {
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
-function waText_(to, text) {
-  return waSend_(to, { type: 'text', text: { body: cut_(text, WA_TEXT_CHARS), preview_url: false } });
+function waText_(to, text, opts) {
+  return waSend_(to, { type: 'text', text: { body: cut_(text, WA_TEXT_CHARS), preview_url: false } }, opts);
 }
 
 /** Hasta 3 botones: [{ id, title }]. */
-function waButtons_(to, body, buttons, footer) {
+function waButtons_(to, body, buttons, footer, opts) {
   var msg = {
     type: 'interactive',
     interactive: {
@@ -73,7 +128,7 @@ function waButtons_(to, body, buttons, footer) {
     }
   };
   if (footer) msg.interactive.footer = { text: cut_(footer, 60) };
-  return waSend_(to, msg);
+  return waSend_(to, msg, opts);
 }
 
 /** Lista desplegable: rows = [{ id, title, description }] (máximo 10). */
@@ -140,7 +195,7 @@ function waCatalog_(to, body, thumbnailId) {
 }
 
 /** Plantilla aprobada por Meta (para escribir fuera de la ventana de 24 horas). */
-function waTemplate_(to, name, params, lang) {
+function waTemplate_(to, name, params, lang, opts) {
   return waSend_(to, {
     type: 'template',
     template: {
@@ -150,13 +205,14 @@ function waTemplate_(to, name, params, lang) {
         ? [{ type: 'body', parameters: params.map(function (p) { return { type: 'text', text: cut_(p, 1000) }; }) }]
         : []
     }
-  });
+  }, opts);
 }
 
-function waMarkRead_(messageId) {
-  return graph_(secret_('WA_PHONE_ID') + '/messages', {
-    messaging_product: 'whatsapp', status: 'read', message_id: messageId
-  });
+/** Marca como leído y muestra "escribiendo…" mientras el bot responde. */
+function waMarkRead_(messageId, typing) {
+  var payload = { messaging_product: 'whatsapp', status: 'read', message_id: messageId };
+  if (typing) payload.typing_indicator = { type: 'text' };
+  return graph_(secret_('WA_PHONE_ID') + '/messages', payload);
 }
 
 /** Error 131047: pasaron más de 24 horas desde el último mensaje de esa persona. */
