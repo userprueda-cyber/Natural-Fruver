@@ -44,7 +44,7 @@ function whenHumanReplies_(cfg) {
 
 /**
  * Pasa el chat a una persona: avisa al cliente y a los trabajadores con el contexto.
- * customerText: mensaje para el cliente (opcional; si no, el estándar según horario).
+ * customerText: mensaje para el cliente ('' = el estándar según horario; null = no escribirle).
  */
 function startHandoff_(from, c, cfg, reason, customerText, lastText) {
   var already = c.row.asesor === 'pendiente';
@@ -62,7 +62,8 @@ function startHandoff_(from, c, cfg, reason, customerText, lastText) {
   if (already) return;
 
   var turns = (c.data.turnos || []).slice(-4).map(function (t) { return (t.r === 'c' ? '👤 ' : '🤖 ') + cut_(t.t, 120); });
-  if (lastText) turns.push('👤 ' + cut_(redact_(lastText), 200));
+  var lastTurn = (c.data.turnos || []).slice(-1)[0];
+  if (lastText && !(lastTurn && lastTurn.t === clip_(redact_(lastText), 200))) turns.push('👤 ' + cut_(redact_(lastText), 200));
   var cart = (c.data.carrito || []).length ? priceItems_(c.data.carrito).lines : [];
   var body = '🙋 *Cliente para atender*\n' +
     (c.row.nombre || c.data.perfil || 'Sin nombre') + ' · +' + waNumber_(from) + '\n' +

@@ -391,7 +391,7 @@ function routeIntent_(from, c, cfg, text, norm, intent) {
       return waText_(from, 'Listo ✅. No te enviaremos mensajes automáticos (recordatorios ni avisos). Si nos escribes, te respondemos. Para volver a recibirlos escribe *alta*.');
     case 'privacy_view': saveClient_(c); return sendMyData_(from, c);
     case 'privacy_delete': saveClient_(c); return askDeleteData_(from);
-    case 'human': return startHandoff_(from, c, cfg, 'pedido', null, text);
+    case 'human': return startHandoff_(from, c, cfg, 'pedido', '', text);
     case 'complaint':
       var openNow = (openState_(cfg.horario, null, cfg.horario_festivos) || { open: true }).open;
       return startHandoff_(from, c, cfg, 'queja', 'Lamento mucho lo que pasó 😔. Ya le paso tu caso a una persona del equipo para que lo solucione. ' +
@@ -513,7 +513,10 @@ function orderOrSearch_(from, c, cfg, text, norm, intent) {
     if (v.injection_suspected) return routeIntent_(from, c, cfg, text, norm, 'injection');
     if (v.wants_human || v.sentiment === 'angry') return routeIntent_(from, c, cfg, text, norm, v.intent === 'complaint' ? 'complaint' : 'human');
     var fromAi = aiToParsed_(v, index, units);
-    if ((v.intent === 'order' || v.intent === 'change' || v.intent === 'unknown') && (fromAi.items.length || fromAi.asks.length)) {
+    // Si trae productos con cantidad es un pedido, aunque el modelo lo haya clasificado distinto.
+    var looksLikeOrder = v.items.some(function (it) { return it.product_id && it.qty !== null; }) &&
+      ['price', 'availability', 'remove', 'complaint', 'cancel_order'].indexOf(v.intent) < 0;
+    if ((looksLikeOrder || v.intent === 'order' || v.intent === 'change' || v.intent === 'unknown') && (fromAi.items.length || fromAi.asks.length)) {
       return v.intent === 'change' ? applyChange_(from, c, cfg, fromAi) : addParsed_(from, c, cfg, fromAi);
     }
     var mapped = { price: 'price', availability: 'availability', hours: 'hours', location: 'location', delivery_info: 'delivery_info',
@@ -537,6 +540,10 @@ function aiToParsed_(v, index, units) {
     if (!it.product_id) { out.missing.push({ raw: it.raw_text, options: [] }); return; }
     var p = byId[it.product_id];
     var base = { raw: it.raw_text, qty: it.qty, unit: it.unit, id: p.id, p: p.p, visible: p.visible };
+    // La IA puede adivinar mal ("fruta peluda" → pitaya). Si el texto no nombra claramente ese producto, se confirma con el cliente.
+    var m = matchProducts_(it.raw_text || '', index);
+    var named = m.candidates.some(function (x) { return x.id === p.id && x.score >= NLU_ASK; });
+    if (!named) { base.kind = 'product'; base.options = [{ id: p.id, p: p.p }]; out.asks.push(base); return; }
     if (it.qty === null) { base.kind = 'qty'; out.asks.push(base); return; }
     var conv = convertQty_(it.qty, it.unit, p.p.unidad, units);
     if (!conv.ok) { base.kind = 'unit'; out.asks.push(base); return; }
@@ -628,6 +635,10 @@ function askNext_(from, c, cfg, prefix) {
   var pre = prefix ? prefix + '\n\n' : '';
   if (q.kind === 'product') {
     var opts = q.options.map(productById_).filter(Boolean);
+    if (opts.length === 1) {
+      return waButtons_(from, pre + '¿Te refieres a *' + opts[0].nombre + '* (' + money_(priceOf_(opts[0])) + '/' + unitLabel_(opts[0].unidad) + ')?', [
+        { id: 'pp:' + opts[0].id, title: '✅ Sí' }, { id: 'pp:none', title: '❌ No' }]);
+    }
     var body = pre + '¿Cuál ' + (q.raw ? 'de estos para "' + cut_(q.raw, 30) + '"' : 'quieres') + '?';
     if (opts.length <= 2) {
       return waButtons_(from, body, opts.map(function (p) { return { id: 'pp:' + p.id, title: p.nombre }; }).concat([{ id: 'pp:none', title: 'Ninguno' }]));
@@ -933,7 +944,7 @@ function customerReply_(from, c, cfg, id) {
   if (id === 'mis') { saveClient_(c); return sendMyOrders_(from); }
   if (id === 'info') { saveClient_(c); return sendInfo_(from, cfg, c); }
   if (id === 'menu') { if (!(c.data.carrito || []).length) resetClient_(c); else saveClient_(c); return sendMenu_(from, c, cfg); }
-  if (id === 'asesor') return startHandoff_(from, c, cfg, 'pedido', null);
+  if (id === 'asesor') return startHandoff_(from, c, cfg, 'pedido', '');
   if (id === 'repetir') return repeatLastOrder_(from, c, cfg);
   if (id === 'seguir') { saveClient_(c); return resumeFlow_(from, c, cfg, ''); }
   if (id === 'fin') return finishCart_(from, c, cfg);

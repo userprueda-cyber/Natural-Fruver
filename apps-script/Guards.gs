@@ -20,7 +20,7 @@ function setPaused_(on, who) {
  * Devuelve '' (normal), 'warn' (avisar una vez) o 'drop' (ignorar).
  */
 function rateLimit_(phone, cfg) {
-  var max = num_(cfg.mensajes_por_minuto, 12);
+  var max = num_(cfg.mensajes_por_minuto, 20);
   if (!(max > 0)) return '';
   var cache = CacheService.getScriptCache();
   var key = 'rl_' + phone + '_' + nowStr_().slice(0, 16);

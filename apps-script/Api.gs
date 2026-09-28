@@ -15,6 +15,12 @@ function doGet(e) {
   return respond_(function () {
     if (action === 'catalogo') return getCatalogCached_();
     if (action === 'ping') return { ok: true, hora: nowStr_() };
+    // Salud para el monitor externo (UptimeRobot, relé). Con HEALTH_KEY en Propiedades del script, se exige ?clave=.
+    if (action === 'salud') {
+      var key = secret_('HEALTH_KEY');
+      if (key && !safeEqual_(String(e.parameter.clave || ''), key)) return { ok: true, hora: nowStr_() };
+      return healthCheck_();
+    }
     throw userError_('accion', 'Acción desconocida.');
   });
 }

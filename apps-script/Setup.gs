@@ -36,7 +36,7 @@ var DEFAULT_CONFIG = [
   ['modo_bot', 'asistido', 'sombra = los trabajadores aprueban cada respuesta; asistido = el bot responde, los pedidos los confirma una persona; autonomo'],
   ['bot_pausado', 'no', 'si = el bot no responde a clientes (todo lo atiende una persona). Comandos: pausar / reanudar'],
   ['espera_rafaga_seg', 4, 'Segundos que espera el bot por si el cliente sigue escribiendo (0 = no espera)'],
-  ['mensajes_por_minuto', 12, 'Máximo de mensajes por minuto de un número antes de ignorarlo un rato'],
+  ['mensajes_por_minuto', 20, 'Máximo de mensajes por minuto de un número antes de ignorarlo un rato'],
   ['minutos_escalar_asesor', 10, 'Si nadie atiende a un cliente que pidió asesor en estos minutos, se avisa al número de respaldo'],
   ['minutos_devolver_bot', 120, 'Minutos sin mensajes de la persona antes de que el bot vuelva a atender ese chat'],
   ['horas_recordatorio_carrito', 3, 'Recordar una vez un pedido sin terminar después de estas horas (0 = nunca)'],

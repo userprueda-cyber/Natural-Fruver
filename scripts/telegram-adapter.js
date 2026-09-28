@@ -37,7 +37,15 @@ function toWhatsAppMessage(update) {
     const text = m.text === '/start' ? 'hola' : m.text;
     return Object.assign(base(m.chat.id), { type: 'text', text: { body: text } });
   }
-  return Object.assign(base(m.chat.id), { type: m.photo ? 'image' : 'unsupported' });
+  // Notas de voz y audios: el bot los pide a "Meta" con este id; scripts/telegram.js los baja de Telegram.
+  const voice = m.voice || m.audio;
+  if (voice) return Object.assign(base(m.chat.id), { type: 'audio', audio: { id: 'tgfile:' + voice.file_id, mime_type: voice.mime_type || 'audio/ogg', voice: !!m.voice } });
+  if (m.photo) return Object.assign(base(m.chat.id), { type: 'image', image: { id: 'tgfile:' + m.photo[m.photo.length - 1].file_id, caption: m.caption || '' } });
+  if (m.sticker) return Object.assign(base(m.chat.id), { type: 'sticker', sticker: { id: 'tgfile:' + m.sticker.file_id } });
+  if (m.document) return Object.assign(base(m.chat.id), { type: 'document', document: { id: 'tgfile:' + m.document.file_id } });
+  if (m.video || m.video_note) return Object.assign(base(m.chat.id), { type: 'video', video: {} });
+  if (m.contact) return Object.assign(base(m.chat.id), { type: 'contacts', contacts: [{ name: { formatted_name: m.contact.first_name } }] });
+  return Object.assign(base(m.chat.id), { type: 'unsupported' });
 }
 
 function profileName(update) {

@@ -76,6 +76,7 @@ function llmPrefix_(index) {
     '- qty es la cantidad que pidió el cliente en la unidad que dijo (unit). Si no dijo cantidad, qty=null. Si no dijo unidad, unit=null.',
     '- unit es una de: ' + units + ' (o null).',
     '- Los clientes escriben con errores, sin tildes, abreviaturas (xfa, pa, d, lbs, k) y fracciones ("libra y media" = 1.5 lb, "medio kilo" = 0.5 kg).',
+    '- Si el mensaje menciona productos con o sin cantidad para comprar, intent="order" (aunque no use un verbo).',
     '- intent: order (quiere comprar/agregar), price, availability, hours, location, delivery_info, payment_info, status (estado de un pedido),',
     '  cancel_order, change (cambiar cantidad), remove (quitar algo del pedido), complaint (queja, producto dañado, cobro mal), human (pide persona),',
     '  greeting, thanks, affirm (sí), deny (no), offtopic (nada que ver con la tienda), unknown.',

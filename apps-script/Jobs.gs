@@ -13,7 +13,19 @@ function onOpen() {
     .addItem('Agregar fotos del catálogo', 'addCatalogPhotos')
     .addItem('Cancelar pedidos pendientes vencidos', 'cancelStalePendingOrders')
     .addItem('Enviar resumen diario ahora', 'sendDailySummary')
+    .addSeparator()
+    .addItem('Pausar el bot', 'pauseBot')
+    .addItem('Reanudar el bot', 'resumeBot')
+    .addItem('Revisar salud del bot', 'showHealth')
     .addToUi();
+}
+
+function pauseBot() { setPaused_(true, 'menú de la hoja'); }
+function resumeBot() { setPaused_(false, 'menú de la hoja'); }
+function showHealth() {
+  var h = healthCheck_();
+  var text = JSON.stringify(h, null, 2);
+  try { SpreadsheetApp.getUi().alert(text); } catch (e) { console.log(text); }
 }
 
 /** Al editar la hoja a mano, la página se actualiza en el siguiente minuto. */
@@ -28,7 +40,7 @@ function refreshCatalogNow() {
 
 /** Crea los activadores: cada hora (pedidos vencidos y catálogo de WhatsApp) y cada mañana (resumen). */
 function installTriggers() {
-  var handlers = ['cancelStalePendingOrders', 'sendDailySummary', 'refreshCatalogNow', 'syncWhatsAppCatalog'];
+  var handlers = ['cancelStalePendingOrders', 'sendDailySummary', 'refreshCatalogNow', 'syncWhatsAppCatalog', 'runEveryFiveMinutes', 'dailyHealthCheck'];
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (handlers.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
@@ -36,6 +48,9 @@ function installTriggers() {
   ScriptApp.newTrigger('cancelStalePendingOrders').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('syncWhatsAppCatalog').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('sendDailySummary').timeBased().atHour(6).everyDays(1).create();
+  // Escalar chats sin atender, reintentar avisos de pedidos, recordatorios y resumen de la noche.
+  ScriptApp.newTrigger('runEveryFiveMinutes').timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('dailyHealthCheck').timeBased().atHour(7).everyDays(1).create();
   try {
     SpreadsheetApp.getUi().alert('Listo: tareas automáticas activadas.');
   } catch (e) { /* ejecutado desde el editor, sin interfaz */ }

@@ -33,7 +33,7 @@ var NLU_STOP = ('de del la las el los un una unos unas y o con para por favor me
   'deme dame dar vende venden vendes venta hay tienen tiene tienes manejan manejas precio cuanto vale ' +
   'cuesta sale esta estan como que pedido pedir hacer agregar agrega agregue agregame pon ponme pongame ' +
   'anota anotame apunta apunteme tambien mas otro otra otros otras buenas buenos hola dias tardes noches ' +
-  'porfa gracias si no bien kilo porque pues ya ahora hoy mañana manana este esta esa ese eso solo cada ' +
+  'porfa gracias si no bien kilo poquito poquitico poco algo cuantos cuantas varios varias porque pues ya ahora hoy mañana manana este esta esa ese eso solo cada ' +
   'bueno buena aprox aproximadamente sumerce veci vecino vecina amigo amiga senor senora don dona').split(' ');
 
 // ───────────────────────── 1. Normalizar ─────────────────────────
@@ -247,7 +247,7 @@ function qtyStep_(unidad) {
 
 var INTENT_RULES = [
   ['optout', /\b(stop|baja|darme de baja|no (me )?(manden|envien|escriban) mas|no mas mensajes|unsubscribe)\b/],
-  ['injection', /(ignor|olvid)\w* (todas |todo |tus |las |sus )*(instrucciones|reglas|indicaciones)|system prompt|prompt del sistema|(muestra|dime|revela)\w* (tu|el|tus) (prompt|instrucciones)|eres ahora|ahora eres|actua como|modo (desarrollador|dios)|developer mode|jailbreak|ignore (all |your |previous )*(instructions|rules)|you are now|dan mode/],
+  ['injection', /(ignor|olvid)\w* (todas |todo |tus |las |sus |lo )*(instrucciones|reglas|indicaciones|anterior|que te dijeron)|\d{2,3} ?(%|por ciento) de descuento|system prompt|prompt del sistema|(muestra|dime|revela)\w* (tu|el|tus) (prompt|instrucciones)|eres ahora|ahora eres|actua como|modo (desarrollador|dios)|developer mode|jailbreak|ignore (all |your |previous )*(instructions|rules)|you are now|dan mode/],
   ['owner_claim', /soy (el|la) (dueno|duena|jefe|administrador|admin)|el dueno (lo )?autoriz|descuento del? 100|gratis porque/],
   ['abuse', /\b(hijueputa|hp|gonorrea|malparid\w*|pirob\w*|perra|puta|marica|idiota|estupid\w*|imbecil|huevon|guevon|mierda|te voy a matar|los voy a matar|sexo|desnud\w*|porno|culo|verga)\b/],
   ['privacy_delete', /(borr|elimin|quit)\w* (todos )?(mis )?datos|olvid\w* (mis datos|mi numero|de mi)/],
@@ -352,6 +352,8 @@ function splitItems_(norm, units) {
       if (!unit && u && (qty !== null || i + 1 < words.length || words.length === 1)) { unit = u.unit; continue; }
       rest.push(w);
     }
+    // "un poquito", "algo de": cantidad indefinida → se pregunta.
+    if (/\b(poquito|poquitico|poco|algo|unos cuantos|unas cuantas|varios|varias)\b/.test(part)) qty = null;
     // "2 de tomate" → cantidad sin unidad; "tomate 2 libras" también funciona.
     var sig = significant_(rest);
     if (!sig.length && qty === null) return;
