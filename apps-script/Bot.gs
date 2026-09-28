@@ -84,10 +84,13 @@ function failSoft_(from, err) {
 /** Meta a veces reenvía el mismo mensaje: se atiende una sola vez. */
 function alreadySeen_(id) {
   if (!id) return false;
-  var cache = CacheService.getScriptCache();
-  if (cache.get('wa_' + id)) return true;
-  cache.put('wa_' + id, '1', SEEN_SECONDS);
-  return false;
+  // Dos entregas del mismo mensaje a la vez: el candado corto hace que solo una lo atienda.
+  return withShortLock_(function () {
+    var cache = CacheService.getScriptCache();
+    if (cache.get('wa_' + id)) return true;
+    cachePut_('wa_' + id, '1', SEEN_SECONDS);
+    return false;
+  });
 }
 
 /** Mensajes de más de 24 h (reintentos viejos tras una caída larga) no se responden. */
@@ -166,11 +169,14 @@ function collectBurst_(from, text, id, cfg) {
   if (!(wait > 0)) return text;
   var cache = CacheService.getScriptCache();
   var key = 'burst_' + from;
-  var list = JSON.parse(cache.get(key) || '[]');
-  list.push({ id: id, t: text });
-  cache.put(key, JSON.stringify(list), 120);
+  // Leer-agregar-guardar con candado corto: dos mensajes simultáneos no se pisan.
+  withShortLock_(function () {
+    var current = JSON.parse(cache.get(key) || '[]');
+    current.push({ id: id, t: text });
+    cachePut_(key, JSON.stringify(current), 120);
+  });
   Utilities.sleep(Math.min(wait, 10) * 1000);
-  list = JSON.parse(cache.get(key) || '[]');
+  var list = JSON.parse(cache.get(key) || '[]');
   if (!list.length || list[list.length - 1].id !== id) return null;
   cache.remove(key);
   return list.map(function (x) { return x.t; }).join('\n');

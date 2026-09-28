@@ -131,20 +131,17 @@ function llmBlockedReason_(cfg, phone) {
   if (totals.month >= num_(cfg.ia_presupuesto_mes_usd, 10)) return 'presupuesto';
   if (totals.day >= num_(cfg.ia_presupuesto_dia_usd, 0.6)) return 'presupuesto';
   if (phone) {
-    var cache = CacheService.getScriptCache();
     var hourKey = 'ia_h_' + phone + '_' + nowStr_().slice(0, 13);
-    var dayKey = 'ia_d_' + phone + '_' + todayStr_();
-    if (num_(cache.get(hourKey), 0) >= num_(cfg.ia_llamadas_hora, 10)) return 'limite_cliente';
-    if (num_(cache.get(dayKey), 0) >= num_(cfg.ia_llamadas_dia, 30)) return 'limite_cliente';
+    if (num_(CacheService.getScriptCache().get(hourKey), 0) >= num_(cfg.ia_llamadas_hora, 10)) return 'limite_cliente';
+    if (dayCount_('ia_' + phone) >= num_(cfg.ia_llamadas_dia, 30)) return 'limite_cliente';
   }
   return '';
 }
 
 function countLlmCall_(phone) {
-  var cache = CacheService.getScriptCache();
-  ['ia_h_' + phone + '_' + nowStr_().slice(0, 13), 'ia_d_' + phone + '_' + todayStr_()].forEach(function (k) {
-    cache.put(k, String(num_(cache.get(k), 0) + 1), 86400);
-  });
+  var hourKey = 'ia_h_' + phone + '_' + nowStr_().slice(0, 13);
+  cachePut_(hourKey, num_(CacheService.getScriptCache().get(hourKey), 0) + 1, 3600);
+  dayBump_('ia_' + phone);
 }
 
 /** Suma el costo al día y al mes, lo anota en la pestaña Uso y avisa al 50 %, 80 % y 100 %. */
@@ -173,9 +170,9 @@ function recordUsage_(cfg, phone, model, usage, costUsd) {
 function llmFailed_() {
   var cache = CacheService.getScriptCache();
   var n = num_(cache.get('ia_fallos'), 0) + 1;
-  cache.put('ia_fallos', String(n), 600);
+  cachePut_('ia_fallos', n, 600);
   if (n >= 2) {
-    cache.put('ia_abierto', '1', LLM_BREAKER_SECONDS);
+    cachePut_('ia_abierto', '1', LLM_BREAKER_SECONDS);
     cache.remove('ia_fallos');
   }
 }

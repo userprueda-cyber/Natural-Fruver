@@ -27,7 +27,7 @@ function authWorker_(pin) {
     });
   }
   if (!worker) {
-    cache.put('pin_fails', String(fails + 1), PIN_LOCK_SECONDS);
+    cachePut_('pin_fails', fails + 1, PIN_LOCK_SECONDS);
     throw userError_('pin', 'PIN incorrecto.');
   }
   return worker;

@@ -120,6 +120,38 @@ function appendLog_(name, obj) {
   }
 }
 
+/**
+ * CacheService acepta como máximo 6 h (21600 s), 100 KB por valor y claves de 250 caracteres.
+ * Todo put pasa por aquí para no pasarse (un valor mayor a 6 h se recortaría o fallaría).
+ */
+function cachePut_(key, value, seconds) {
+  CacheService.getScriptCache().put(String(key).slice(0, 250), String(value), Math.max(1, Math.min(Math.round(seconds || 600), 21600)));
+}
+
+/**
+ * Contadores de "hoy": van en Propiedades del script (el caché dura máximo 6 h, así que un
+ * "límite diario" en caché se reiniciaría solo). Se limpian solos (pruneProps_).
+ */
+function dayCount_(key) {
+  return num_(PropertiesService.getScriptProperties().getProperty('d_' + todayStr_() + '_' + key), 0);
+}
+
+function dayBump_(key) {
+  var p = PropertiesService.getScriptProperties();
+  var k = 'd_' + todayStr_() + '_' + key;
+  var n = num_(p.getProperty(k), 0) + 1;
+  p.setProperty(k, String(n));
+  return n;
+}
+
+/** Ejecuta fn con el candado del script, esperando poco. Si no lo consigue, sigue sin él. */
+function withShortLock_(fn) {
+  var lock = LockService.getScriptLock();
+  var held = false;
+  try { lock.waitLock(3000); held = true; } catch (e) { held = false; }
+  try { return fn(); } finally { if (held) lock.releaseLock(); }
+}
+
 /** Últimos 4 dígitos de un teléfono, para registros sin datos personales completos. */
 function last4_(phone) {
   var d = String(phone || '').replace(/\D/g, '');

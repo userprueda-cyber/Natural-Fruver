@@ -13,9 +13,7 @@ function transcribeAudio_(cfg, phone, mediaId) {
   if (!truthy_(cfg.audio_activo)) return { ok: false, reason: 'desactivado' };
   var key = secret_('DEEPGRAM_API_KEY');
   if (!key) return { ok: false, reason: 'sin_clave' };
-  var cache = CacheService.getScriptCache();
-  var dayKey = 'stt_' + phone + '_' + todayStr_();
-  if (num_(cache.get(dayKey), 0) >= num_(cfg.audio_max_dia, 5)) return { ok: false, reason: 'limite' };
+  if (dayCount_('stt_' + phone) >= num_(cfg.audio_max_dia, 5)) return { ok: false, reason: 'limite' };
 
   var meta = graph_(encodeURIComponent(mediaId), null, 'get');
   if (!meta.ok || !meta.body.url) return { ok: false, reason: 'descarga' };
@@ -24,7 +22,7 @@ function transcribeAudio_(cfg, phone, mediaId) {
   if (file.getResponseCode() >= 300) return { ok: false, reason: 'descarga' };
   var bytes = file.getContent();
   if (bytes.length > STT_MAX_BYTES) return { ok: false, reason: 'largo' };
-  cache.put(dayKey, String(num_(cache.get(dayKey), 0) + 1), 86400);
+  dayBump_('stt_' + phone);
 
   var res = UrlFetchApp.fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=es&smart_format=true', {
     method: 'post',

@@ -69,7 +69,7 @@ function waSend_(to, message, opts) {
   bumpMetric_(res.ok ? 'enviados' : 'fallos_envio');
   var id = res.ok && res.body && res.body.messages && res.body.messages[0] && res.body.messages[0].id;
   if (id && opts.purpose) {
-    CacheService.getScriptCache().put('out_' + id, JSON.stringify({ purpose: opts.purpose, nro: opts.nro || '', to: String(to) }), 21600);
+    cachePut_('out_' + id, JSON.stringify({ purpose: opts.purpose, nro: opts.nro || '', to: String(to) }), 21600);
   }
   return res;
 }
@@ -83,7 +83,7 @@ function shadowMode_() {
 /** Guarda el borrador y se lo muestra a los trabajadores con botones Enviar / Descartar. */
 function shadowDraft_(to, message) {
   var id = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
-  CacheService.getScriptCache().put('draft_' + id, JSON.stringify({ to: String(to), message: message }), 21600);
+  cachePut_('draft_' + id, JSON.stringify({ to: String(to), message: message }), 21600);
   var preview = message.type === 'text' ? message.text.body
     : message.type === 'interactive' ? ((message.interactive.body || {}).text || '') + '\n[' + message.interactive.type + ']'
       : '[' + message.type + ']';
