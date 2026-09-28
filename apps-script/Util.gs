@@ -148,7 +148,9 @@ function isBlank_(v) {
 function num_(v, fallback) {
   if (typeof v === 'number') return isFinite(v) ? v : fallback;
   if (isBlank_(v)) return fallback;
-  var n = Number(String(v).replace(/[$\s]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+  var s = String(v).replace(/[$\s]/g, '');
+  // "0.007" es decimal; "1.500" (formato colombiano) son mil quinientos.
+  var n = /^-?0\./.test(s) ? Number(s) : Number(s.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
   return isFinite(n) ? n : fallback;
 }
 

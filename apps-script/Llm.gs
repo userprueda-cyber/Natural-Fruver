@@ -100,12 +100,22 @@ function llmConfig_(cfg) {
 
 function monthKey_() { return todayStr_().slice(0, 7); }
 
+/** Gasto guardado en micro-dólares (enteros) para evitar errores de redondeo. */
 function usageTotals_() {
   var props = PropertiesService.getScriptProperties();
   return {
-    day: num_(props.getProperty('ia_usd_d_' + todayStr_()), 0),
-    month: num_(props.getProperty('ia_usd_m_' + monthKey_()), 0)
+    day: num_(props.getProperty('ia_umicros_d_' + todayStr_()), 0) / 1e6,
+    month: num_(props.getProperty('ia_umicros_m_' + monthKey_()), 0) / 1e6
   };
+}
+
+function addSpend_(costUsd) {
+  var props = PropertiesService.getScriptProperties();
+  var micros = Math.round(costUsd * 1e6);
+  ['ia_umicros_d_' + todayStr_(), 'ia_umicros_m_' + monthKey_()].forEach(function (k) {
+    props.setProperty(k, String(num_(props.getProperty(k), 0) + micros));
+  });
+  return usageTotals_();
 }
 
 /** Por qué no se puede usar la IA ahora ('' = sí se puede). */
@@ -137,11 +147,7 @@ function countLlmCall_(phone) {
 /** Suma el costo al día y al mes, lo anota en la pestaña Uso y avisa al 50 %, 80 % y 100 %. */
 function recordUsage_(cfg, phone, model, usage, costUsd) {
   var props = PropertiesService.getScriptProperties();
-  var dKey = 'ia_usd_d_' + todayStr_();
-  var mKey = 'ia_usd_m_' + monthKey_();
-  var month = num_(props.getProperty(mKey), 0) + costUsd;
-  props.setProperty(dKey, String(num_(props.getProperty(dKey), 0) + costUsd));
-  props.setProperty(mKey, String(month));
+  var month = addSpend_(costUsd).month;
   bumpMetric_('ia_llamadas');
   appendLog_(SHEETS.USAGE, {
     fecha: nowStr_(), cliente: last4_(phone), funcion: 'entender', modelo: model,
@@ -271,10 +277,12 @@ function llmUnderstand_(cfg, phone, text, state, turns, index) {
   index = index || productIndex_();
   var lc = llmConfig_(cfg);
   var prefix = llmPrefix_(index);
-  var context = (turns || []).slice(-6).map(function (t) { return (t.r === 'c' ? 'Cliente: ' : 'Tienda: ') + clip_(t.t, 160); }).join('\n');
+  var clean = function (s) { return String(s || '').replace(/<\/?\s*mensaje_cliente\s*>/gi, ''); };
+  // El último turno es el mensaje actual: no se repite en el contexto.
+  var context = (turns || []).slice(-7, -1).map(function (t) { return (t.r === 'c' ? 'Cliente: ' : 'Tienda: ') + clean(clip_(t.t, 160)); }).join('\n');
   var userText = 'Estado del pedido: ' + (state || 'sin pedido en curso') + '\n' +
     (context ? 'Últimos mensajes:\n' + context + '\n' : '') +
-    '<mensaje_cliente>\n' + clip_(text, LLM_MAX_INPUT_CHARS).replace(/<\/?mensaje_cliente>/gi, '') + '\n</mensaje_cliente>';
+    '<mensaje_cliente>\n' + clean(clip_(text, LLM_MAX_INPUT_CHARS)) + '\n</mensaje_cliente>';
 
   var attempt = 0, last = null;
   while (attempt < 2) {

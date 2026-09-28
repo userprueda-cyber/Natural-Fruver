@@ -20,8 +20,8 @@ var SEEN_SECONDS = 6 * 3600;
 var MAX_TEXT_CHARS = 1500;
 var GREETINGS = ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'buenas noches', 'menu', 'inicio', 'empezar', 'hi', 'ola', 'buen dia'];
 // Intenciones que interrumpen un paso (dirección, nombre…) y se atienden de inmediato.
-var BREAKING_INTENTS = ['human', 'complaint', 'cancel_order', 'optout', 'privacy_view', 'privacy_delete', 'abuse', 'injection',
-  'owner_claim', 'health', 'hours', 'location', 'payment_info', 'delivery_info', 'status', 'robot', 'payment_claim', 'my_orders'];
+// (Un intento de manipulación dentro de una dirección o nota es solo texto: se guarda como dato, sin efecto.)
+var BREAKING_INTENTS = ['human', 'complaint', 'cancel_order', 'optout', 'privacy_view', 'privacy_delete', 'abuse', 'health', 'hours', 'location', 'payment_info', 'delivery_info', 'status', 'robot', 'payment_claim', 'my_orders'];
 
 function safeEqual_(a, b) {
   a = String(a); b = String(b);

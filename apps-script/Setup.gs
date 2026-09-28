@@ -59,7 +59,7 @@ var DEFAULT_CONFIG = [
 var DEFAULT_UNITS = [
   ['lb', 'lb, lbs, libra, libras', 500],
   ['kg', 'kg, kgs, kilo, kilos, kl, k, kilogramo, kilogramos', 1000],
-  ['unidad', 'und, unds, unidad, unidades, u, uds', ''],
+  ['unidad', 'und, unds, unidad, unidades, u, uds, cabeza, cabezas', ''],
   ['atado', 'atado, atados, manojo, manojos, mazo, mazos', ''],
   ['canasta', 'canasta, canastas, panal, panales, cubeta, cubetas', ''],
   ['paquete', 'paquete, paquetes, paq, bolsa, bolsas', ''],
@@ -85,7 +85,9 @@ var SAMPLE_ALIASES = {
   'guayaba-manzana': 'guayaba, guayabas',
   'granadilla': 'granadillas',
   'uchuva': 'uchuvas',
-  'lulo': 'lulos'
+  'lulo': 'lulos',
+  'repollo-verde': 'repollo, repollos',
+  'ajo': 'ajos, cabeza de ajo'
 };
 
 /** Agrega a Config las claves que falten (sin tocar las que ya existen). */

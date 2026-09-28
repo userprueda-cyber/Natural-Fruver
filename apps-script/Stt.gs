@@ -39,10 +39,7 @@ function transcribeAudio_(cfg, phone, mediaId) {
   var alt = (((((body.results || {}).channels || [])[0] || {}).alternatives || [])[0]) || {};
   var seconds = num_((body.metadata || {}).duration, 0);
   var cost = seconds / 60 * STT_USD_PER_MIN;
-  var props = PropertiesService.getScriptProperties();
-  ['ia_usd_d_' + todayStr_(), 'ia_usd_m_' + monthKey_()].forEach(function (k) {
-    props.setProperty(k, String(num_(props.getProperty(k), 0) + cost));
-  });
+  addSpend_(cost);
   appendLog_(SHEETS.USAGE, { fecha: nowStr_(), cliente: last4_(phone), funcion: 'audio', modelo: 'deepgram:nova-2', entrada: Math.round(seconds), salida: 0, costo_usd: Math.round(cost * 1e6) / 1e6 });
   var text = String(alt.transcript || '').trim();
   if (!text) return { ok: false, reason: 'vacio' };

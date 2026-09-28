@@ -19,7 +19,7 @@ function metrics_(day) {
   var props = PropertiesService.getScriptProperties();
   var out = {};
   METRIC_NAMES.forEach(function (m) { out[m] = num_(props.getProperty('m_' + (day || todayStr_()) + '_' + m), 0); });
-  out.ia_usd = num_(props.getProperty('ia_usd_d_' + (day || todayStr_())), 0);
+  out.ia_usd = num_(props.getProperty('ia_umicros_d_' + (day || todayStr_())), 0) / 1e6;
   return out;
 }
 

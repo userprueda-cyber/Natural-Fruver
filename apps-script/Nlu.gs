@@ -137,6 +137,13 @@ function unitTable_() {
   return map;
 }
 
+/** "lirbas" → libras (errores de digitación en unidades de 5+ letras). */
+function fuzzyUnit_(w, units) {
+  if (w.length < 5) return null;
+  for (var k in units) { if (k.length >= 5 && editDistance_(w, k) <= 1) return units[k]; }
+  return null;
+}
+
 // ───────────────────────── Índice de productos ─────────────────────────
 
 function significant_(words) {
@@ -188,7 +195,11 @@ function phraseScore_(q, phrase) {
   });
   var cq = qSum / q.length;
   var cp = Object.keys(used).length / phrase.length;
-  return 0.7 * cq + 0.3 * cp;
+  var score = 0.7 * cq + 0.3 * cp;
+  // El cliente nombró el producto completo, palabra por palabra ("naranja" en "naranja para jugo"): muy probable.
+  var exact = phrase.every(function (pw) { return q.some(function (qw) { return stem_(qw) === stem_(pw); }); });
+  if (exact && cq >= 0.5) score = Math.max(score, 0.85 + 0.15 * cq);
+  return score;
 }
 
 /**
@@ -223,6 +234,9 @@ function resolveProduct_(match) {
   var top = c[0];
   var close = c.filter(function (x) { return top.score - x.score < NLU_MARGIN; });
   if (top.score >= NLU_ACCEPT && close.length === 1) return { status: 'ok', product: top, confidence: top.score };
+  // Un solo candidato razonable (típico de un error de digitación: "arevja"): se acepta.
+  var others = c.filter(function (x) { return x !== top && x.score >= NLU_ASK; });
+  if (top.score >= 0.7 && !others.length) return { status: 'ok', product: top, confidence: top.score };
   return { status: 'ask', options: (close.length > 1 ? close : c.filter(function (x) { return x.score >= NLU_ASK; })).slice(0, 9) };
 }
 
@@ -252,10 +266,11 @@ var INTENT_RULES = [
   ['abuse', /\b(hijueputa|hp|gonorrea|malparid\w*|pirob\w*|perra|puta|marica|idiota|estupid\w*|imbecil|huevon|guevon|mierda|te voy a matar|los voy a matar|sexo|desnud\w*|porno|culo|verga)\b/],
   ['privacy_delete', /(borr|elimin|quit)\w* (todos )?(mis )?datos|olvid\w* (mis datos|mi numero|de mi)/],
   ['privacy_view', /(que|cuales) datos (tienen|tienes|guardan|tiene)|\bmis datos\b|datos personales/],
-  ['human', /\b(asesor|asesora|humano|humana|agente|operador|operadora|alguien real|persona real|una persona|hablar con (alguien|una persona|el dueno|la duena)|atencion al cliente|me atiende alguien)\b/],
-  ['robot', /(eres|es|sos|estoy hablando con) (un |una )?(robot|bot|maquina|chatbot|humano|persona|ia\b|inteligencia)|\bchatbot\b|\brobot\b/],
+  ['human', /\b(asesor|asesora|humano|humana|agente|operador|operadora|alguien real|persona real|una persona|1 persona|hablar con (alguien|una persona|1 persona|el dueno|la duena|un humano|1 humano)|atencion al cliente|me atiende alguien)\b/],
+  ['robot', /(eres|es|sos|estoy hablando con) (un |una |1 )?(robot|bot|maquina|chatbot|humano|persona|ia\b|inteligencia)|\bchatbot\b|\brobot\b/],
   ['complaint', /(llego|vino|venia|estaba|estaban|esta|estan|salio|salieron) (todo |toda )?(danad|podrid|malo|mala|mal|feo|fea|incomplet|roto|vencid|pasad|aplastad)|me cobraron (de mas|mal|doble)|\bqueja\b|reclamo|devolucion|reembolso|devuelvan|no (me )?llego|nunca llego|me falt|faltaron|pesimo|pesima|mal servicio|demorad|se demoro|llevo \d+ (horas|minutos) esperando/],
   ['health', /alergi|alergic|diabet|embaraz|lactancia|enfermedad|medicament|cancer|colesterol|hipertens|gastritis|celiac|sin gluten|\bcura\b|curar|sirve para (bajar|adelgazar|la tos|el dolor|la presion|el azucar|el higado|los rinones)|adelgazar|bajar de peso/],
+  ['thanks', /^dios (le|te|les) (pague|bendiga)/],
   ['payment_claim', /\b(ya )?(pague|transferi|consigne|envie la plata|hice la transferencia|te pague|les pague)\b|comprobante|soporte de pago|pantallazo del pago/],
   ['discount', /descuent|rebaj|mas barat|me lo deja|precio especial|negociar|regateo|me hace precio|yapa|ganga/],
   ['cancel_order', /cancel\w* (mi |el )?pedido|anul\w* (mi |el )?pedido|ya no (lo )?quiero|no quiero (el|ese) pedido/],
@@ -272,8 +287,8 @@ var INTENT_RULES = [
   ['thanks', /^(ok |listo |dale |bueno )?(muchas |mil )?gracias\b|^dios (le|te) pague|^muy amable/],
   ['finish', /^(eso es todo|es todo|eso seria todo|seria todo|nada mas|solo eso|eso es|ya esta|ya es todo|listo eso es todo|terminar|finalizar( pedido)?|pagar)$/]
 ];
-var GREETING_RE = /^(hola|buenas|buenos dias|buenas tardes|buenas noches|buen dia|buenas buenas|hi|hello|saludos|que mas|q hubo|quiubo|alo|hey)( (hola|buenas|como esta|como estas|como va|vecino|vecina|senor|senora|don|dona|amigo|amiga|sumerce))*\b/;
-var AFFIRM = ['si', 'claro', 'dale', 'listo', 'ok', 'correcto', 'de una', 'si senor', 'si senora', 'perfecto', 'confirmo', 'confirmar', 'eso', 'exacto', 'va', 'bueno', 'vale', 'de acuerdo', 'si por favor', 'si esa', 'esa', 'si claro', 'afirmativo', 'yes'];
+var GREETING_RE = /^(buenas tardes|buenas noches|buenos dias|buenas buenas|buen dia|hola|buenas|hi|hello|saludos|que mas|q hubo|quiubo|alo|hey)( (hola|buenas|como esta|como estas|como va|vecino|vecina|senor|senora|don|dona|amigo|amiga|sumerce))*\b/;
+var AFFIRM = ['si', 'claro', 'dale', 'listo', 'ok', 'correcto', 'de una', 'de 1', 'si 1', 'si senor', 'si senora', 'perfecto', 'confirmo', 'confirmar', 'eso', 'exacto', 'va', 'bueno', 'vale', 'de acuerdo', 'si por favor', 'si esa', 'esa', 'si claro', 'afirmativo', 'yes'];
 var DENY = ['no', 'nop', 'mejor no', 'no gracias', 'negativo', 'no por ahora', 'todavia no', 'aun no', 'no senor', 'no senora', 'cancela', 'nada'];
 var OFFTOPIC_RE = /\b(receta|como se (hace|prepara|cocina)|chiste|poema|cancion|tarea|ensayo|traduce|traducir|programa|codigo|python|javascript|clima|noticias|futbol|partido|quien gano|presidente|elecciones|capital de|cuantos anos|cuentame|escribe(me)? un|que opinas|consejo|horoscopo|bitcoin|dolar|matematica|resuelve|ecuacion)\b/;
 var ORDER_VERB_RE = /\b(quiero|quisiera|necesito|regalame|regala|mandame|manda|deme|dame|pedir|pido|agrega|agregar|agregue|ponme|pongame|anota|anotame|apunteme|encargar|encargo|comprar|llevar|me (vende|envia|trae))\b/;
@@ -286,6 +301,9 @@ var CHANGE_RE = /^(mejor|cambia|cambiar|cambie|cambiame|que sean|que sea|ponle|d
 function detectIntent_(norm, raw) {
   var n = String(norm || '');
   if (!n) return 'empty';
+  // Leetspeak ("1gn0r4 tus 1nstrucc10n3s"): se descifra solo para buscar manipulación.
+  var leet = deLeet_(raw);
+  if (leet && leet !== n && INTENT_RULES[1][1].test(leet)) return 'injection';
   for (var i = 0; i < INTENT_RULES.length; i++) {
     if (INTENT_RULES[i][1].test(n)) return INTENT_RULES[i][0];
   }
@@ -297,9 +315,19 @@ function detectIntent_(norm, raw) {
   if (PRICE_RE.test(rest)) return 'price';
   if (AVAIL_RE.test(rest)) return 'availability';
   if (CHANGE_RE.test(rest)) return 'change';
-  if (ORDER_VERB_RE.test(rest)) return 'order';
   if (OFFTOPIC_RE.test(rest)) return 'offtopic';
+  if (ORDER_VERB_RE.test(rest)) return 'order';
   return 'unknown';
+}
+
+/** Palabras que mezclan letras y números → letras ("1gn0r4" → "ignora"). '' si no hay. */
+function deLeet_(raw) {
+  var s = String(raw || '').toLowerCase();
+  if (!/[a-z][0-9]|[0-9][a-z]/.test(s)) return '';
+  var map = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', '$': 's' };
+  return normalize_(s.replace(/\b[\w@$]*[a-z][\w@$]*\b/g, function (w) {
+    return /\d/.test(w) ? w.replace(/[013457@$]/g, function (ch) { return map[ch]; }) : w;
+  }));
 }
 
 /** ¿Escribió en inglés? (respuesta corta en inglés, el flujo sigue igual) */
@@ -348,7 +376,7 @@ function splitItems_(norm, units) {
     for (var i = 0; i < words.length; i++) {
       var w = words[i];
       if (qty === null && /^\d+(\.\d+)?$/.test(w)) { qty = Number(w); continue; }
-      var u = units[w] || units[stem_(w)];
+      var u = units[w] || units[stem_(w)] || fuzzyUnit_(w, units);
       if (!unit && u && (qty !== null || i + 1 < words.length || words.length === 1)) { unit = u.unit; continue; }
       rest.push(w);
     }
@@ -374,7 +402,8 @@ function parseOrderText_(norm, index, units) {
     var phrase = it.words.join(' ');
     var match = matchProducts_(phrase, index);
     if (!match.known.length) {
-      if (significant_(it.words).length) out.missing.push({ raw: it.raw, options: [] });
+      // Solo es "producto que no manejamos" si trae cantidad o el mensaje es claramente un pedido.
+      if (significant_(it.words).length && (it.qty !== null || ORDER_VERB_RE.test(norm))) out.missing.push({ raw: it.raw, options: [] });
       return;
     }
     var res = resolveProduct_(match);

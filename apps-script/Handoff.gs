@@ -102,7 +102,7 @@ function releaseHandoff_(phone, who, notify) {
   saveClient_(c);
   audit_(who || 'bot', phone, 'devolver', '');
   if (notify && inWindow_(c)) {
-    waButtons_(phone, 'Sigo por aquí si necesitas algo más 😊', [
+    waButtons_(waNumber_(c.row.telefono || phone), 'Sigo por aquí si necesitas algo más 😊', [
       { id: 'cat', title: '🛒 Hacer pedido' },
       { id: 'menu', title: '🏠 Menú' }
     ]);
