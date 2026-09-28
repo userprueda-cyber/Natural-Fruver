@@ -247,6 +247,9 @@
     ['pimenton aji', '🫑'], ['maiz mazorca', '🌽'], ['papa', '🥔'], ['yuca', '🍠'], ['platano', '🍌'],
     ['berenjena', '🍆'], ['champinon', '🍄'], ['frijol lenteja garbanzo arveja', '🫘'], ['huevo', '🥚'],
     ['queso', '🧀'], ['leche', '🥛'], ['cilantro perejil hierbabuena albahaca', '🌿'], ['jengibre', '🫚'],
+    ['mantequilla', '🧈'], ['yogurt yogur', '🥛'], ['salchicha chorizo salchichon', '🌭'], ['hamburguesa', '🍔'],
+    ['chicharron tocineta jamon', '🥓'], ['costilla lomo filete solomito bondiola chuleta chuleton fajitas cubitos ossobuco', '🥩'],
+    ['cafe', '☕'], ['arroz', '🍚'], ['cerveza', '🍺'], ['gaseosa', '🥤'], ['helado barquillo', '🍦'],
     ['combo canasta', '🧺']
   ];
 

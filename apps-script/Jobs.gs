@@ -9,6 +9,7 @@ function onOpen() {
     .addItem('2. Activar tareas automáticas', 'installTriggers')
     .addSeparator()
     .addItem('Actualizar catálogo ahora', 'refreshCatalogNow')
+    .addItem('Agregar fotos del catálogo', 'addCatalogPhotos')
     .addItem('Cancelar pedidos pendientes vencidos', 'cancelStalePendingOrders')
     .addItem('Enviar resumen diario ahora', 'sendDailySummary')
     .addToUi();

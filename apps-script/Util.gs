@@ -23,6 +23,9 @@ var ORDER_HEADERS = [
   'items', 'subtotal', 'domicilio', 'total', 'actualizado', 'actualizado_por'
 ];
 var CONFIG_HEADERS = ['clave', 'valor', 'nota'];
+
+// Carpeta de las fotos que vienen con la página (relativa a site/).
+var PHOTO_DIR = 'img/productos/';
 var WORKER_HEADERS = ['nombre', 'pin', 'activo'];
 
 var ORDER_STATES = ['pendiente', 'confirmado', 'entregado', 'cancelado'];
