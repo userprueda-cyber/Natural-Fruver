@@ -33,6 +33,10 @@ Mobile-first product catalog for **Natural Fruver Pereira**. Customers browse, s
 | `tests/` | `node --test` suites. `gas-mock.js` runs the real `.gs` files against in-memory Sheets/Cache/Lock/Drive mocks |
 | `.github/workflows/site.yml` | Runs tests on every push; deploys `site/` to GitHub Pages from `main` |
 
+## Design
+
+The visual system ("market stall": kraft paper, ink green, price-tag labels, Barlow Condensed) is documented in [`design-system/natural-fruver/MASTER.md`](design-system/natural-fruver/MASTER.md). It was generated with the **UI UX Pro Max** skill, which is vendored in `.claude/skills/ui-ux-pro-max/` (MIT), so any Claude Code session in this repo can use it. Icons are Phosphor (MIT) in `site/img/icons.svg`, and fonts are self-hosted in `site/fonts/` (OFL).
+
 ## Development
 
 ```bash

@@ -204,7 +204,7 @@
     var closed = orders.filter(function (o) { return o.estado === 'entregado' || o.estado === 'cancelado'; });
     var html = open.length
       ? open.map(orderCard).join('')
-      : '<div class="empty"><p>No hay pedidos abiertos. 🎉</p><p class="fine">La lista se actualiza sola cada minuto.</p></div>';
+      : '<div class="empty">' + NF.icon('basket', 'empty-icon') + '<p>No hay pedidos abiertos.</p><p class="fine">La lista se revisa sola cada minuto.</p></div>';
     if (closed.length) {
       html += '<details class="closed"><summary>Últimos pedidos cerrados (' + closed.length + ')</summary>' + closed.map(orderCard).join('') + '</details>';
     }
@@ -217,22 +217,29 @@
     var actions = '';
     if (o.estado === 'pendiente') {
       actions = '<button class="btn primary" data-order="' + esc(o.nro) + '" data-to="confirmado">Confirmar</button>' +
-        '<button class="btn danger-outline" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
+        '<button class="btn danger" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
     } else if (o.estado === 'confirmado') {
       actions = '<button class="btn primary" data-order="' + esc(o.nro) + '" data-to="entregado">Entregado</button>' +
-        '<button class="btn danger-outline" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
+        '<button class="btn danger" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
     }
+    var wa = NF.waLink(phone, 'Hola ' + o.cliente + ', te escribimos de Natural Fruver por tu pedido ' + o.nro);
     return '<article class="order is-' + esc(o.estado) + '">' +
-      '<header><strong>' + esc(o.nro) + '</strong><span class="pill">' + esc(STATE_LABEL[o.estado] || o.estado) + '</span><small>' + esc(o.fecha) + '</small></header>' +
-      '<p><strong>' + esc(o.cliente) + '</strong> · <a href="' + NF.waLink(phone, 'Hola ' + o.cliente + ', te escribimos de Natural Fruver por tu pedido ' + o.nro) + '" target="_blank" rel="noopener">' + esc(o.telefono) + ' 💬</a></p>' +
-      '<p>' + (o.entrega === 'domicilio' ? '🛵 ' + esc(o.direccion) : '🏪 Recoge en tienda') + '</p>' +
-      (o.notas ? '<p class="note">📝 ' + esc(o.notas) + '</p>' : '') +
-      '<ul class="items">' + o.items.map(function (l) {
-        return '<li><span>' + NF.qty(l.cantidad) + ' ' + esc(NF.unitLabel(l.unidad)) + ' ' + esc(l.nombre) + '</span><span>' + NF.money(l.total) + '</span></li>';
-      }).join('') + '</ul>' +
-      '<p class="order-total">' + (o.domicilio ? 'Domicilio ' + NF.money(o.domicilio) + ' · ' : '') + 'Total <strong>' + NF.money(o.total) + '</strong></p>' +
+      '<header class="order-head"><span class="order-nro">' + esc(o.nro) + '</span>' +
+      '<span class="status">' + esc(STATE_LABEL[o.estado] || o.estado) + '</span><time>' + esc(o.fecha) + '</time></header>' +
+      '<div class="order-who"><strong>' + esc(o.cliente) + '</strong>' +
+      '<a class="order-phone" href="' + wa + '" target="_blank" rel="noopener" aria-label="Escribir a ' + esc(o.cliente) + ' por WhatsApp">' +
+      NF.icon('whatsapp-logo') + esc(o.telefono) + '</a></div>' +
+      '<p class="order-meta">' + (o.entrega === 'domicilio'
+        ? NF.icon('moped') + '<span>' + esc(o.direccion) + '</span>'
+        : NF.icon('storefront') + '<span>Recoge en la tienda</span>') + '</p>' +
+      (o.notas ? '<p class="order-meta order-note">' + NF.icon('note-pencil') + '<span>' + esc(o.notas) + '</span></p>' : '') +
+      '<div class="order-items">' + o.items.map(function (l) {
+        return NF.leaderRow('<b>' + NF.qty(l.cantidad) + ' ' + esc(NF.unitLabel(l.unidad)) + '</b> ' + esc(l.nombre), NF.money(l.total));
+      }).join('') +
+      (o.domicilio ? NF.leaderRow('Domicilio', NF.money(o.domicilio), 'is-sub') : '') +
+      NF.leaderRow('Total', NF.money(o.total), 'is-total') + '</div>' +
       (actions ? '<div class="actions">' + actions + '</div>' : '') +
-      (o.actualizado_por && o.estado !== 'pendiente' ? '<p class="fine">Por: ' + esc(o.actualizado_por) + '</p>' : '') +
+      (o.actualizado_por && o.estado !== 'pendiente' ? '<p class="fine order-by">Actualizado por ' + esc(o.actualizado_por) + '</p>' : '') +
       '</article>';
   }
 
@@ -275,27 +282,32 @@
     $('#plist').innerHTML = list.length ? list.map(productRow).join('') : '<li class="empty"><p>No hay productos aquí.</p></li>';
   }
 
+  function thumbHtml(p) {
+    if (p.foto) return '<img src="' + esc(p.foto) + '" alt="" loading="lazy" width="56" height="56">';
+    var t = NF.placeholderTile(p);
+    return '<span class="ph" style="--h:' + t.hue + '"><span class="ph-initial">' + esc(t.initial) + '</span></span>';
+  }
+
   function productRow(p) {
-    var cat = (state.data.categorias.filter(function (c) { return c.nombre === p.categoria; })[0] || {});
-    var thumb = p.foto
-      ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy" width="56" height="56">'
-      : '<span class="ph">' + esc(NF.productEmoji(p, cat.icono)) + '</span>';
-    var price = p.oferta != null
-      ? '<s>' + NF.money(p.precio) + '</s> <strong class="sale">' + NF.money(p.oferta) + '</strong>'
-      : '<strong>' + NF.money(p.precio) + '</strong>';
+    var name = esc(p.nombre);
+    var price = (p.oferta != null ? '<s class="was">' + NF.money(p.precio) + '</s> ' : '') +
+      '<span class="tag tag-sm' + (p.oferta != null ? ' is-sale' : '') + '"><strong>' + NF.money(NF.priceOf(p)) + '</strong>' +
+      '<span class="unit">/' + esc(NF.unitLabel(p.unidad)) + '</span></span>';
     var stock = p.stock != null
       ? '<div class="mini-stepper' + (p.stock <= lowThreshold() ? ' low' : '') + '">' +
-        '<button type="button" data-stock="' + esc(p.id) + '" data-delta="-1" aria-label="Menos">−</button>' +
+        '<button type="button" data-stock="' + esc(p.id) + '" data-delta="-1" aria-label="Restar a ' + name + '">' + NF.icon('minus') + '</button>' +
         '<span>' + NF.qty(p.stock) + ' ' + esc(NF.unitLabel(p.unidad)) + '</span>' +
-        '<button type="button" data-stock="' + esc(p.id) + '" data-delta="1" aria-label="Más">+</button></div>'
-      : '<small class="muted">Sin control de cantidad</small>';
+        '<button type="button" data-stock="' + esc(p.id) + '" data-delta="1" aria-label="Sumar a ' + name + '">' + NF.icon('plus') + '</button></div>'
+      : '<small class="muted no-count">Sin conteo</small>';
     var toggle = p.archivado
       ? '<button type="button" class="btn small" data-unarchive="' + esc(p.id) + '">Restaurar</button>'
-      : '<label class="switch" title="Disponible"><input type="checkbox" data-toggle="' + esc(p.id) + '"' + (p.disponible_marcado ? ' checked' : '') + '><span></span></label>';
+      : '<label class="switch"><input type="checkbox" role="switch" data-toggle="' + esc(p.id) + '"' + (p.disponible_marcado ? ' checked' : '') +
+        ' aria-label="' + name + ' disponible"><span aria-hidden="true"></span></label>';
     return '<li class="prow' + (p.disponible ? '' : ' is-out') + '" data-id="' + esc(p.id) + '">' +
-      '<button type="button" class="prow-main" data-edit="' + esc(p.id) + '">' + thumb +
-      '<span class="prow-text"><span class="prow-name">' + esc(p.nombre) + '</span>' +
-      '<span class="prow-price">' + price + ' <small>/ ' + esc(NF.unitLabel(p.unidad)) + '</small></span></span></button>' +
+      '<button type="button" class="prow-main" data-edit="' + esc(p.id) + '" aria-label="Editar ' + name + '">' + thumbHtml(p) +
+      '<span class="prow-text"><span class="prow-name">' + name + '</span>' +
+      '<span class="prow-price">' + price + '</span>' +
+      (p.disponible ? '' : '<span class="prow-flag">No disponible</span>') + '</span></button>' +
       '<div class="prow-side">' + toggle + stock + '</div></li>';
   }
 
@@ -403,7 +415,8 @@
   function showPhoto(url) {
     var el = $('#photo-preview');
     var f = $('#edit-form');
-    el.innerHTML = url ? '<img src="' + esc(url) + '" alt="">' : '<span class="ph">' + esc(NF.productEmoji({ nombre: f.nombre.value || '' }, '📷')) + '</span>';
+    var t = NF.placeholderTile({ nombre: f.nombre.value || '?', categoria: f.categoria.value || '' });
+    el.innerHTML = url ? '<img src="' + esc(url) + '" alt="">' : '<span class="ph" style="--h:' + t.hue + '"><span class="ph-initial">' + esc(t.initial) + '</span></span>';
     $('#photo-remove').hidden = !url;
   }
 

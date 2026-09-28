@@ -102,7 +102,7 @@
     var el = $('#open-state');
     el.hidden = !os;
     if (os) {
-      el.textContent = os.text;
+      el.innerHTML = '<span class="dot" aria-hidden="true"></span>' + esc(os.text);
       el.classList.toggle('is-open', os.open);
     }
     var banner = $('#banner');
@@ -111,11 +111,18 @@
     if (c.instagram) $('#ig-link').href = 'https://www.instagram.com/' + encodeURIComponent(c.instagram) + '/';
 
     var foot = [];
-    if (c.direccion_tienda) foot.push('<p>📍 ' + esc(c.direccion_tienda) + '</p>');
-    if (c.horario) foot.push('<p>🕒 ' + esc(c.horario) + '</p>');
-    if (c.zonas_domicilio) foot.push('<p>🛵 Domicilios: ' + esc(c.zonas_domicilio) + deliveryText(c) + '</p>');
-    if (c.whatsapp) foot.push('<p><a href="' + NF.waLink(c.whatsapp, 'Hola, tengo una pregunta') + '" target="_blank" rel="noopener">💬 Escríbenos por WhatsApp</a></p>');
+    if (c.direccion_tienda) foot.push(footRow('map-pin', esc(c.direccion_tienda)));
+    if (c.horario) foot.push(footRow('clock', esc(c.horario)));
+    if (c.zonas_domicilio) foot.push(footRow('moped', 'Domicilios: ' + esc(c.zonas_domicilio) + deliveryText(c)));
+    if (c.whatsapp) {
+      foot.push(footRow('whatsapp-logo', '<a href="' + NF.waLink(c.whatsapp, 'Hola, tengo una pregunta') + '" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>'));
+    }
+    foot.unshift('<p class="foot-mark">' + esc(name) + '</p>');
     $('#foot').innerHTML = foot.join('');
+  }
+
+  function footRow(iconName, html) {
+    return '<p class="foot-row">' + NF.icon(iconName) + '<span>' + html + '</span></p>';
   }
 
   function deliveryText(c) {
@@ -131,14 +138,14 @@
     var cat = state.catalog;
     var chips = [{ key: '', label: 'Todo' }];
     if (cat.productos.some(function (p) { return p.oferta != null && p.disponible; })) {
-      chips.push({ key: 'ofertas', label: '🔥 Ofertas' });
+      chips.push({ key: 'ofertas', label: 'Ofertas' });
     }
     cat.categorias.forEach(function (c) {
-      chips.push({ key: c.nombre, label: (c.icono ? c.icono + ' ' : '') + c.nombre });
+      chips.push({ key: c.nombre, label: c.nombre });
     });
     if (state.cat && !chips.some(function (c) { return c.key === state.cat; })) state.cat = '';
     $('#chips').innerHTML = chips.map(function (c) {
-      return '<button type="button" class="chip" data-cat="' + esc(c.key) + '" aria-pressed="' + (c.key === state.cat) + '">' + esc(c.label) + '</button>';
+      return '<button type="button" class="tab-cat" data-cat="' + esc(c.key) + '" aria-pressed="' + (c.key === state.cat) + '">' + esc(c.label) + '</button>';
     }).join('');
   }
 
@@ -156,25 +163,27 @@
       html = section(state.cat, all.filter(function (p) { return p.categoria === state.cat; }));
     } else {
       var featured = all.filter(function (p) { return p.destacado && p.disponible; });
-      if (featured.length) html += section('⭐ Destacados', featured, 'row');
+      if (featured.length) html += section('Destacados de hoy', featured, 'row');
       state.catalog.categorias.forEach(function (c) {
         var list = all.filter(function (p) { return p.categoria === c.nombre; });
-        if (list.length) html += section((c.icono ? c.icono + ' ' : '') + c.nombre, list, '', c.nombre);
+        if (list.length) html += section(c.nombre, list, '', c.nombre);
       });
     }
     $('#main').innerHTML = html || '<div class="empty"><p>Pronto agregaremos productos.</p></div>';
   }
 
   function section(title, list, layout, catKey) {
-    var more = catKey ? '<button type="button" class="link" data-cat="' + esc(catKey) + '">Ver solo esta</button>' : '';
-    return '<section class="block"><div class="block-head"><h2>' + esc(title) + '</h2>' + more + '</div>' +
+    var more = catKey
+      ? '<button type="button" class="link" data-cat="' + esc(catKey) + '">Ver todo' + NF.icon('caret-right', 'ic-sm') + '</button>'
+      : '';
+    return '<section class="block"><div class="block-head"><h2 class="rule-title">' + esc(title) + '</h2>' + more + '</div>' +
       '<div class="' + (layout === 'row' ? 'row-scroll' : 'grid') + '">' + list.map(card).join('') + '</div></section>';
   }
 
   function notFound() {
     var c = cfg();
     var ask = c.whatsapp
-      ? '<a class="btn" target="_blank" rel="noopener" href="' + NF.waLink(c.whatsapp, 'Hola, ¿tienen ' + state.q + '?') + '">Preguntar por WhatsApp</a>'
+      ? '<a class="btn" target="_blank" rel="noopener" href="' + NF.waLink(c.whatsapp, 'Hola, ¿tienen ' + state.q + '?') + '">' + NF.icon('whatsapp-logo') + 'Preguntar por WhatsApp</a>'
       : '';
     return '<div class="empty"><p>No encontramos “' + esc(state.q) + '”.</p>' + ask + '</div>';
   }
@@ -183,23 +192,24 @@
     if (p.foto) {
       return '<img src="' + esc(p.foto) + '" alt="' + esc(p.nombre) + '" loading="lazy" decoding="async"' + (big ? '' : ' width="300" height="300"') + '>';
     }
-    var cat = state.categories[p.categoria];
-    return '<span class="ph" aria-hidden="true">' + esc(NF.productEmoji(p, cat && cat.icono)) + '</span>';
+    var t = NF.placeholderTile(p);
+    return '<span class="ph" style="--h:' + t.hue + '" aria-hidden="true"><span class="ph-initial">' + esc(t.initial) + '</span>' +
+      '<span class="ph-cat">' + esc(p.categoria) + '</span></span>';
   }
 
   function priceHtml(p) {
-    var unit = '<span class="unit">/ ' + esc(NF.unitLabel(p.unidad)) + '</span>';
-    if (p.oferta != null) {
-      return '<p class="price"><s>' + NF.money(p.precio) + '</s> <strong class="sale">' + NF.money(p.oferta) + '</strong> ' + unit + '</p>';
-    }
-    return '<p class="price"><strong>' + NF.money(p.precio) + '</strong> ' + unit + '</p>';
+    var unit = '<span class="unit">/' + esc(NF.unitLabel(p.unidad)) + '</span>';
+    var was = p.oferta != null ? '<s class="was">' + NF.money(p.precio) + '</s>' : '';
+    return '<p class="price">' + was + '<span class="tag' + (p.oferta != null ? ' is-sale' : '') + '">' +
+      '<strong>' + NF.money(NF.priceOf(p)) + '</strong>' + unit + '</span></p>';
   }
 
   function card(p) {
     var pct = NF.discountPct(p);
     return '<article class="card' + (p.disponible ? '' : ' is-out') + '" data-id="' + esc(p.id) + '">' +
       '<button type="button" class="card-media" data-open="' + esc(p.id) + '" aria-label="Ver ' + esc(p.nombre) + '">' + media(p) +
-      (pct > 0 ? '<span class="badge">-' + pct + '%</span>' : '') + '</button>' +
+      (pct > 0 ? '<span class="stamp">Oferta −' + pct + '%</span>' : '') +
+      (p.disponible ? '' : '<span class="stamp is-out">Agotado</span>') + '</button>' +
       '<div class="card-body"><h3>' + esc(p.nombre) + '</h3>' + priceHtml(p) +
       '<div class="controls">' + controls(p) + '</div></div></article>';
   }
@@ -209,14 +219,14 @@
   }
 
   function controls(p) {
-    if (!p.disponible) return '<span class="out">Agotado</span>';
+    if (!p.disponible) return '<span class="out">Vuelve pronto</span>';
     var q = state.cart[p.id] || 0;
-    if (!q) return '<button type="button" class="btn add" data-add="' + esc(p.id) + '">Agregar</button>';
+    if (!q) return '<button type="button" class="btn add" data-add="' + esc(p.id) + '" aria-label="Agregar ' + esc(p.nombre) + '">' + NF.icon('plus') + 'Agregar</button>';
     var atMax = q + NF.step(p.unidad) > maxQty(p);
     return '<div class="stepper">' +
-      '<button type="button" data-dec="' + esc(p.id) + '" aria-label="Quitar">−</button>' +
-      '<span>' + NF.qty(q) + ' ' + esc(NF.unitLabel(p.unidad)) + '</span>' +
-      '<button type="button" data-inc="' + esc(p.id) + '" aria-label="Agregar más"' + (atMax ? ' disabled' : '') + '>+</button></div>';
+      '<button type="button" data-dec="' + esc(p.id) + '" aria-label="Quitar ' + esc(p.nombre) + '">' + NF.icon('minus') + '</button>' +
+      '<span aria-live="polite">' + NF.qty(q) + ' ' + esc(NF.unitLabel(p.unidad)) + '</span>' +
+      '<button type="button" data-inc="' + esc(p.id) + '" aria-label="Agregar más ' + esc(p.nombre) + '"' + (atMax ? ' disabled' : '') + '>' + NF.icon('plus') + '</button></div>';
   }
 
   // ---------- carrito ----------
@@ -293,16 +303,14 @@
     }
     var c = cfg();
     var min = Number(c.pedido_minimo) || 0;
-    var html = '<ul class="lines">' + t.lines.map(function (l) {
-      return '<li><div><strong>' + esc(l.nombre) + '</strong><small>' + NF.money(l.precio) + ' / ' + esc(NF.unitLabel(l.unidad)) + '</small></div>' +
-        '<div class="controls" data-id="' + esc(l.id) + '">' + controls(l.p) + '</div>' +
-        '<span class="line-total">' + NF.money(l.total) + '</span></li>';
+    var html = '<ul class="receipt">' + t.lines.map(function (l) {
+      return '<li>' + NF.leaderRow(esc(l.nombre), NF.money(l.total)) +
+        '<div class="line-sub"><small>' + NF.money(l.precio) + ' / ' + esc(NF.unitLabel(l.unidad)) + '</small>' +
+        '<div class="controls" data-id="' + esc(l.id) + '">' + controls(l.p) + '</div></div></li>';
     }).join('') + '</ul>';
-    html += '<dl class="sum"><dt>Subtotal</dt><dd>' + NF.money(t.subtotal) + '</dd>';
-    if (entrega === 'domicilio') {
-      html += '<dt>Domicilio</dt><dd>' + (t.domicilio ? NF.money(t.domicilio) : 'Gratis') + '</dd>';
-    }
-    html += '<dt class="total">Total</dt><dd class="total">' + NF.money(t.total) + '</dd></dl>';
+    html += '<div class="receipt-sum">' + NF.leaderRow('Subtotal', NF.money(t.subtotal));
+    if (entrega === 'domicilio') html += NF.leaderRow('Domicilio', t.domicilio ? NF.money(t.domicilio) : 'Gratis');
+    html += NF.leaderRow('Total', NF.money(t.total), 'is-total') + '</div>';
     var free = Number(c.domicilio_gratis_desde) || 0;
     if (entrega === 'domicilio' && free > 0 && t.subtotal < free && Number(c.domicilio_valor) > 0) {
       html += '<p class="hint">Te faltan ' + NF.money(free - t.subtotal) + ' para domicilio gratis.</p>';
@@ -404,10 +412,11 @@
     renderCartButton();
     renderMain();
     $('#cart-body').innerHTML =
-      '<div class="done"><div class="done-icon" aria-hidden="true">✅</div>' +
-      '<h3>¡Pedido ' + esc(res.nro) + ' separado!</h3>' +
+      '<div class="done">' + NF.icon('check-circle', 'done-icon') +
+      '<p class="done-nro">Pedido ' + esc(res.nro) + '</p>' +
+      '<h3>¡Separado!</h3>' +
       '<p>Ahora envíalo por WhatsApp para que te lo confirmemos. Total: <strong>' + NF.money(res.total) + '</strong></p>' +
-      '<a class="btn primary big" id="wa-link" href="' + esc(link) + '" target="_blank" rel="noopener">Abrir WhatsApp</a>' +
+      '<a class="btn primary big" id="wa-link" href="' + esc(link) + '" target="_blank" rel="noopener">' + NF.icon('whatsapp-logo') + 'Abrir WhatsApp</a>' +
       (NF.isDemo() ? '<p class="fine">Modo demostración: el pedido no se guardó.</p>' : '') +
       '</div>';
     // Intentamos abrir WhatsApp directamente; si el navegador lo bloquea, queda el botón.
@@ -450,15 +459,14 @@
   function openProduct(id, push) {
     var p = state.byId[id];
     if (!p) return;
-    var cat = state.categories[p.categoria];
     var hasta = p.oferta != null && p.oferta_hasta ? '<p class="hint">Oferta hasta el ' + esc(p.oferta_hasta.split('-').reverse().join('/')) + '</p>' : '';
     var stock = p.stock != null && p.disponible && p.stock <= 5 ? '<p class="hint warn">¡Quedan ' + NF.qty(p.stock) + ' ' + esc(NF.unitLabel(p.unidad)) + '!</p>' : '';
     $('#product-body').innerHTML =
-      '<div class="sheet-head"><span class="crumb">' + esc((cat && cat.icono) || '') + ' ' + esc(p.categoria) + '</span>' +
-      '<div><button type="button" class="close share" data-share="' + esc(p.id) + '" aria-label="Compartir">↗</button>' +
-      '<button type="button" class="close" data-close aria-label="Cerrar">×</button></div></div>' +
-      '<div class="detail-media">' + media(p, true) + '</div>' +
-      '<h2>' + esc(p.nombre) + '</h2>' + priceHtml(p) + hasta + stock +
+      '<div class="sheet-head" tabindex="-1" autofocus><span class="crumb">' + esc(p.categoria) + '</span>' +
+      '<div class="head-actions"><button type="button" class="icon-btn" data-share="' + esc(p.id) + '" aria-label="Compartir">' + NF.icon('share-network') + '</button>' +
+      '<button type="button" class="icon-btn" data-close aria-label="Cerrar">' + NF.icon('x') + '</button></div></div>' +
+      '<div class="detail-media">' + media(p, true) + (NF.discountPct(p) > 0 ? '<span class="stamp">Oferta −' + NF.discountPct(p) + '%</span>' : '') + '</div>' +
+      '<h2 class="detail-name">' + esc(p.nombre) + '</h2>' + priceHtml(p) + hasta + stock +
       (p.descripcion ? '<p class="desc">' + esc(p.descripcion) + '</p>' : '') +
       '<div class="controls big" data-id="' + esc(p.id) + '">' + controls(p) + '</div>';
     var dlg = $('#product-dialog');
@@ -522,9 +530,9 @@
         state.cat = d.cat;
         state.q = '';
         $('#q').value = '';
-        $$('#chips .chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.cat === state.cat)); });
+        $$('#chips .tab-cat').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.cat === state.cat)); });
         renderMain();
-        var chip = $('#chips .chip[aria-pressed="true"]');
+        var chip = $('#chips .tab-cat[aria-pressed="true"]');
         if (chip) chip.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if ('close' in d) {

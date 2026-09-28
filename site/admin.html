@@ -5,49 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Trabajadores — Natural Fruver</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#1f7a3a">
+  <meta name="theme-color" content="#F4EEE1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121714" media="(prefers-color-scheme: dark)">
   <link rel="icon" href="img/icon.png" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/admin.css">
 </head>
 <body class="admin">
   <!-- Ingreso con PIN -->
   <section id="login" class="login" hidden>
-    <img src="img/logo.png" alt="Natural Fruver" width="186" height="128">
-    <h1>Natural Fruver</h1>
-    <p>Página para trabajadores</p>
-    <form id="login-form" class="checkout">
-      <label>PIN
-        <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required minlength="4" maxlength="20">
-      </label>
+    <p class="login-kicker">Solo trabajadores</p>
+    <h1 class="login-mark"><img class="logo" src="img/logo.png" alt="Natural Fruver" width="465" height="320"></h1>
+    <form id="login-form" class="form">
+      <label for="pin">Tu PIN</label>
+      <input id="pin" class="pin-input" type="password" inputmode="numeric" autocomplete="current-password" required minlength="4" maxlength="20">
       <p class="form-error" id="login-error" role="alert" hidden></p>
       <button class="btn primary big" type="submit">Entrar</button>
     </form>
-    <p id="login-demo" class="notice" hidden>Modo demostración: escribe cualquier PIN de 4 dígitos. Los cambios no se guardan.</p>
-    <p><a href="./">← Ver la tienda</a></p>
+    <p id="login-demo" class="notice" hidden>Modo demostración — escribe cualquier PIN de 4 dígitos. Los cambios no se guardan.</p>
+    <a class="back-link" href="./"><svg class="ic flip" aria-hidden="true"><use href="img/icons.svg#i-caret-right"></use></svg>Ver la tienda</a>
   </section>
 
   <!-- Aplicación -->
   <section id="app" hidden>
-    <header class="top admin-top">
+    <header class="admin-top">
       <div class="top-row">
         <div class="brand">
-          <img src="img/icon.png" alt="" width="32" height="32">
-          <span><strong>Trabajadores</strong><small id="who" class="muted"></small></span>
+          <span class="wordmark">Natural Fruver</span>
+          <span class="brand-sub">Trabajadores · <span id="who"></span></span>
         </div>
         <div class="top-actions">
-          <button type="button" class="close" id="reload" aria-label="Actualizar" title="Actualizar">⟳</button>
-          <button type="button" class="btn small" id="logout">Salir</button>
+          <button type="button" class="icon-btn" id="reload" aria-label="Actualizar">
+            <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-arrow-clockwise"></use></svg>
+          </button>
+          <button type="button" class="icon-btn" id="logout" aria-label="Salir">
+            <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-sign-out"></use></svg>
+          </button>
         </div>
       </div>
-      <nav class="tabs" role="tablist">
+      <nav class="tabs" role="tablist" aria-label="Secciones">
         <button type="button" role="tab" data-tab="pedidos" aria-selected="true">Pedidos <span id="pending-count" class="count" hidden>0</span></button>
         <button type="button" role="tab" data-tab="productos" aria-selected="false">Productos</button>
       </nav>
     </header>
 
-    <p id="admin-demo" class="notice" hidden>Modo demostración: los cambios no se guardan.</p>
+    <p id="admin-demo" class="notice" hidden>Modo demostración — los cambios no se guardan.</p>
 
     <main>
       <div id="tab-pedidos" role="tabpanel"></div>
@@ -55,80 +60,93 @@
       <div id="tab-productos" role="tabpanel" hidden>
         <div class="toolbar">
           <label class="search">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <input id="pq" type="search" placeholder="Buscar producto" autocomplete="off" aria-label="Buscar producto">
+            <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-magnifying-glass"></use></svg>
+            <span class="sr-only">Buscar producto</span>
+            <input id="pq" type="search" placeholder="Buscar producto" autocomplete="off">
           </label>
-          <select id="pfilter" aria-label="Filtrar">
-            <option value="activos">Todos</option>
-            <option value="agotados">Agotados / no disponibles</option>
-            <option value="ofertas">En oferta</option>
-            <option value="poco">Poco inventario</option>
-            <option value="archivados">Archivados</option>
-          </select>
+          <label class="select-wrap">
+            <span class="sr-only">Filtrar</span>
+            <select id="pfilter">
+              <option value="activos">Todos</option>
+              <option value="agotados">Agotados / no disponibles</option>
+              <option value="ofertas">En oferta</option>
+              <option value="poco">Poco inventario</option>
+              <option value="archivados">Archivados</option>
+            </select>
+          </label>
         </div>
         <ul id="plist" class="plist"></ul>
       </div>
     </main>
 
-    <button type="button" id="new-product" class="cart-fab new-fab" hidden>＋ Nuevo producto</button>
+    <button type="button" id="new-product" class="cart-bar new-bar" hidden>
+      <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-plus"></use></svg>
+      <span class="cart-bar-label">Nuevo producto</span>
+    </button>
   </section>
 
   <!-- Editar producto -->
-  <dialog id="edit-dialog" class="sheet">
-    <form id="edit-form" class="checkout" novalidate>
-      <div class="sheet-head">
+  <dialog id="edit-dialog" class="sheet" aria-labelledby="edit-title">
+    <form id="edit-form" class="form edit-form" novalidate>
+      <div class="sheet-head" tabindex="-1" autofocus>
         <h2 id="edit-title">Producto</h2>
-        <button type="button" class="close" data-close aria-label="Cerrar">×</button>
+        <button type="button" class="icon-btn" data-close aria-label="Cerrar">
+          <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-x"></use></svg>
+        </button>
       </div>
       <input type="hidden" name="id">
 
       <div class="photo-row">
         <div class="photo" id="photo-preview"></div>
         <div class="photo-actions">
-          <label class="btn">
-            📷 Tomar / subir foto
-            <input id="photo-input" type="file" accept="image/*" capture="environment" hidden>
+          <label class="btn photo-btn">
+            <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-camera"></use></svg>
+            Foto
+            <input id="photo-input" type="file" accept="image/*" capture="environment" class="sr-only">
           </label>
           <button type="button" class="link" id="photo-remove" hidden>Quitar foto</button>
           <input type="hidden" name="foto_url">
-          <small id="photo-status" class="muted"></small>
+          <small id="photo-status" class="muted" role="status"></small>
         </div>
       </div>
 
-      <label>Nombre <input name="nombre" required maxlength="80" placeholder="Ej: Mango Tommy"></label>
-      <label>Categoría <input name="categoria" list="cat-list" maxlength="80" placeholder="Ej: Frutas"></label>
+      <label>Nombre <input name="nombre" required maxlength="80" placeholder="Mango Tommy"></label>
+      <label>Categoría <input name="categoria" list="cat-list" maxlength="80" placeholder="Frutas"></label>
       <datalist id="cat-list"></datalist>
 
       <div class="two">
         <label>Precio <input name="precio" type="number" inputmode="numeric" min="0" step="50" required></label>
-        <label>Por <select name="unidad" id="unit-select"></select></label>
+        <label>Se vende por <select name="unidad" id="unit-select"></select></label>
       </div>
 
       <fieldset>
-        <legend>Oferta (opcional)</legend>
+        <legend>Oferta <span class="opt">(opcional)</span></legend>
         <div class="two">
           <label>Precio de oferta <input name="precio_oferta" type="number" inputmode="numeric" min="0" step="50"></label>
           <label>o % de descuento <input id="pct" type="number" inputmode="numeric" min="0" max="90" step="1"></label>
         </div>
-        <label>Oferta válida hasta <input name="oferta_hasta" type="date"></label>
-        <small class="muted">Si dejas "Hasta" vacío, la oferta sigue hasta que la quites.</small>
+        <label>Válida hasta <input name="oferta_hasta" type="date"></label>
+        <small class="muted">Sin fecha, la oferta sigue hasta que la quites.</small>
       </fieldset>
 
       <fieldset>
         <legend>Disponibilidad</legend>
         <label class="check"><input type="checkbox" name="disponible"> Disponible para la venta</label>
-        <label class="check"><input type="checkbox" id="track-stock"> Controlar cantidad (se descuenta con cada pedido)</label>
+        <label class="check"><input type="checkbox" id="track-stock"> Controlar cantidad <span class="opt">— se descuenta con cada pedido</span></label>
         <label id="stock-field" hidden>Cantidad en tienda <input name="stock" type="number" inputmode="decimal" min="0" step="0.5"></label>
-        <label class="check"><input type="checkbox" name="destacado"> Destacado (sale arriba en la tienda)</label>
+        <label class="check"><input type="checkbox" name="destacado"> Destacado en la tienda</label>
       </fieldset>
 
-      <label>Descripción (opcional) <textarea name="descripcion" rows="2" maxlength="400"></textarea></label>
-      <label>Otras palabras para buscarlo (opcional) <input name="palabras_clave" maxlength="200" placeholder="Ej: palta, aguacates"></label>
-      <label>Orden en la lista (opcional) <input name="orden" type="number" inputmode="numeric" min="0" step="1" placeholder="Menor = más arriba"></label>
+      <label>Descripción <span class="opt">(opcional)</span> <textarea name="descripcion" rows="2" maxlength="400"></textarea></label>
+      <label>Otros nombres para buscarlo <span class="opt">(opcional)</span> <input name="palabras_clave" maxlength="200" placeholder="palta, aguacates"></label>
+      <label>Orden en la lista <span class="opt">(opcional, menor = más arriba)</span> <input name="orden" type="number" inputmode="numeric" min="0" step="1"></label>
 
       <p class="form-error" id="edit-error" role="alert" hidden></p>
       <button class="btn primary big" type="submit" id="save-product">Guardar</button>
-      <button class="btn big danger-outline" type="button" id="archive-product" hidden>Archivar (ocultar de la tienda)</button>
+      <button class="btn big danger" type="button" id="archive-product" hidden>
+        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-archive"></use></svg>
+        Archivar
+      </button>
       <p class="fine" id="edit-meta"></p>
     </form>
   </dialog>

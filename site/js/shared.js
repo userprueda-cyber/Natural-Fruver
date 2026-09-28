@@ -106,24 +106,29 @@
     return d[a.length][b.length];
   }
 
-  /** Puntaje de una palabra buscada: { s: puntaje, fuzzy: true si solo coincide con error de letra }. */
+  /**
+   * Puntaje de una palabra buscada: { s: puntaje, weak: true si solo coincide a mitad de palabra
+   * ("pina" en "Alpina") o con un error de letra }.
+   */
   function tokenScore(token, nameWords, otherWords) {
-    var best = { s: 0, fuzzy: false };
+    var best = { s: 0, weak: false };
     function check(words, weight) {
       words.forEach(function (w) {
         var s = 0;
-        var fuzzy = false;
+        var weak = false;
         if (w === token) s = 10;
         else if (w.indexOf(token) === 0) s = 8;
-        else if (token.length >= 3 && w.indexOf(token) > 0) s = 5;
-        else if (token.length >= 4) {
+        else if (token.length >= 3 && w.indexOf(token) > 0) {
+          s = 5;
+          weak = true;
+        } else if (token.length >= 4) {
           var allowed = token.length >= 7 ? 2 : 1;
           if (lev(token, w) <= allowed || lev(token, w.slice(0, token.length)) <= allowed) {
             s = 4;
-            fuzzy = true;
+            weak = true;
           }
         }
-        if (s * weight > best.s) best = { s: s * weight, fuzzy: fuzzy };
+        if (s * weight > best.s) best = { s: s * weight, weak: weak };
       });
     }
     check(nameWords, 1);
@@ -140,19 +145,19 @@
       var nameWords = normalize(p.nombre).split(' ');
       var otherWords = normalize(p.categoria + ' ' + (p.palabras || '')).split(' ').filter(Boolean);
       var total = 0;
-      var fuzzy = false;
+      var weak = false;
       for (var i = 0; i < tokens.length; i++) {
         var t = tokenScore(tokens[i], nameWords, otherWords);
         if (!t.s) return;
-        if (t.fuzzy) fuzzy = true;
+        if (t.weak) weak = true;
         total += t.s;
       }
       if (p.disponible) total += 0.5;
-      scored.push({ p: p, s: total, i: idx, fuzzy: fuzzy });
+      scored.push({ p: p, s: total, i: idx, weak: weak });
     });
-    // Si algo coincide de verdad, no mostramos coincidencias "por error de letra".
-    if (scored.some(function (x) { return !x.fuzzy; })) {
-      scored = scored.filter(function (x) { return !x.fuzzy; });
+    // Si algo coincide por palabra completa o por inicio, ocultamos las coincidencias débiles.
+    if (scored.some(function (x) { return !x.weak; })) {
+      scored = scored.filter(function (x) { return !x.weak; });
     }
     scored.sort(function (a, b) { return (b.s - a.s) || (a.i - b.i); });
     return scored.map(function (x) { return x.p; });
@@ -236,32 +241,41 @@
     return { open: false, text: 'Cerrado' };
   }
 
-  // ---------- Emoji de reemplazo mientras no haya foto ----------
+  // ---------- Imagen de reemplazo e íconos ----------
 
-  var EMOJI = [
-    ['banano guineo', '🍌'], ['mango', '🥭'], ['aguacate palta', '🥑'], ['fresa frutilla', '🍓'],
-    ['limon lima', '🍋'], ['naranja mandarina', '🍊'], ['manzana', '🍎'], ['pera', '🍐'], ['uva', '🍇'],
-    ['pina', '🍍'], ['sandia patilla', '🍉'], ['melon', '🍈'], ['coco', '🥥'], ['kiwi', '🥝'], ['cereza', '🍒'],
-    ['durazno melocoton', '🍑'], ['mora arandano', '🫐'], ['tomate', '🍅'], ['cebolla', '🧅'], ['ajo', '🧄'],
-    ['zanahoria', '🥕'], ['lechuga repollo espinaca acelga', '🥬'], ['brocoli coliflor', '🥦'], ['pepino', '🥒'],
-    ['pimenton aji', '🫑'], ['maiz mazorca', '🌽'], ['papa', '🥔'], ['yuca', '🍠'], ['platano', '🍌'],
-    ['berenjena', '🍆'], ['champinon', '🍄'], ['frijol lenteja garbanzo arveja', '🫘'], ['huevo', '🥚'],
-    ['queso', '🧀'], ['leche', '🥛'], ['cilantro perejil hierbabuena albahaca', '🌿'], ['jengibre', '🫚'],
-    ['mantequilla', '🧈'], ['yogurt yogur', '🥛'], ['salchicha chorizo salchichon', '🌭'], ['hamburguesa', '🍔'],
-    ['chicharron tocineta jamon', '🥓'], ['costilla lomo filete solomito bondiola chuleta chuleton fajitas cubitos ossobuco', '🥩'],
-    ['cafe', '☕'], ['arroz', '🍚'], ['cerveza', '🍺'], ['gaseosa', '🥤'], ['helado barquillo', '🍦'],
-    ['combo canasta', '🧺']
+  // Tono (HSL) del "huacal" de reemplazo según la familia de la categoría.
+  var CATEGORY_HUES = [
+    ['frut', 28], ['verdur', 128], ['hierb', 96], ['tuberc', 34], ['grano', 44],
+    ['huevo', 46], ['lact', 46], ['carne', 8], ['embutido', 8], ['abarrote', 40],
+    ['bebida', 200], ['combo', 160], ['org', 110]
   ];
+  var FALLBACK_HUES = [28, 128, 44, 8, 160, 78];
 
-  function productEmoji(p, fallback) {
-    var words = normalize(p.nombre).split(' ');
-    for (var i = 0; i < EMOJI.length; i++) {
-      var keys = EMOJI[i][0].split(' ');
-      for (var j = 0; j < keys.length; j++) {
-        if (words.indexOf(keys[j]) >= 0 || words.indexOf(keys[j] + 's') >= 0 || words.indexOf(keys[j] + 'es') >= 0) return EMOJI[i][1];
-      }
+  /** Datos para la tarjeta sin foto: inicial del producto y tono según la categoría. */
+  function placeholderTile(p) {
+    var cat = normalize(p.categoria);
+    var hue = null;
+    for (var i = 0; i < CATEGORY_HUES.length && hue === null; i++) {
+      if (cat.indexOf(CATEGORY_HUES[i][0]) >= 0) hue = CATEGORY_HUES[i][1];
     }
-    return fallback || '🧺';
+    if (hue === null) {
+      var h = 0;
+      for (var j = 0; j < cat.length; j++) h = (h * 31 + cat.charCodeAt(j)) % 997;
+      hue = FALLBACK_HUES[h % FALLBACK_HUES.length];
+    }
+    var initial = String(p.nombre || '?').trim().charAt(0).toUpperCase() || '?';
+    return { initial: initial, hue: hue };
+  }
+
+  /** Ícono del sprite img/icons.svg (Phosphor). Decorativo por defecto. */
+  function icon(name, cls) {
+    return '<svg class="ic' + (cls ? ' ' + cls : '') + '" aria-hidden="true" focusable="false"><use href="img/icons.svg#i-' + name + '"></use></svg>';
+  }
+
+  /** Fila de recibo: "Nombre ........ $0". El texto ya debe venir escapado. */
+  function leaderRow(label, amount, cls) {
+    return '<div class="leader-row' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span>' +
+      '<span class="leader" aria-hidden="true"></span><span class="amt">' + amount + '</span></div>';
   }
 
   // ---------- WhatsApp ----------
@@ -310,7 +324,9 @@
     parseHours: parseHours,
     openState: openState,
     fmtTime: fmtTime,
-    productEmoji: productEmoji,
+    placeholderTile: placeholderTile,
+    icon: icon,
+    leaderRow: leaderRow,
     orderMessage: orderMessage,
     waLink: waLink
   };
