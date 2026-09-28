@@ -511,14 +511,24 @@ function orderOrSearch_(from, c, cfg, text, norm, intent) {
     bumpMetric_('sin_ia');
     return addParsed_(from, c, cfg, parsed);
   }
-  if (parsed.missing.length && intent === 'order') {
-    var notFoundAll = parsed.missing.every(function (m) { return !m.options.length; });
-    if (!notFoundAll) { bumpMetric_('sin_ia'); return addParsed_(from, c, cfg, parsed); }
-  }
-  // Capa 3: IA (si está activa y hay presupuesto).
+  // Capa 3: IA (si está activa y hay presupuesto). Si no ayuda, se muestran parecidos o se pide aclarar.
   var ai = llmUnderstand_(cfg, from, text, cartState_(c), c.data.turnos, index);
+  var useRules = function () {
+    if (parsed.missing.length && intent === 'order' && parsed.missing.some(function (m) { return m.options.length; })) {
+      bumpMetric_('sin_ia');
+      return addParsed_(from, c, cfg, parsed);
+    }
+    return misunderstood_(from, c, cfg, text, parsed);
+  };
+  if (!ai.ok) return useRules();
   if (ai.ok) {
     var v = ai.value;
+    // Solo productos que salen del mensaje actual (la IA a veces copia del historial).
+    var msgWords = normText_(text).split(' ');
+    v.items = v.items.filter(function (it) {
+      var w = significant_(normText_(it.raw_text).split(' '));
+      return w.length && w.filter(function (x) { return msgWords.indexOf(x) >= 0; }).length >= Math.ceil(w.length / 2);
+    });
     if (v.injection_suspected) return routeIntent_(from, c, cfg, text, norm, 'injection');
     if (v.wants_human || v.sentiment === 'angry') return routeIntent_(from, c, cfg, text, norm, v.intent === 'complaint' ? 'complaint' : 'human');
     var fromAi = aiToParsed_(v, index, units);
@@ -537,7 +547,7 @@ function orderOrSearch_(from, c, cfg, text, norm, intent) {
     }
     if (mapped && mapped !== 'price' && mapped !== 'availability' && mapped !== 'remove') return routeIntent_(from, c, cfg, text, norm, mapped);
   }
-  return misunderstood_(from, c, cfg, text, parsed);
+  return useRules();
 }
 
 /** Resultado de la IA (ya validado) → mismo formato que parseOrderText_. */
@@ -719,6 +729,7 @@ function answerQuestion_(from, c, cfg, text, norm, intent) {
     }
     if (pick) { chooseProduct_(from, c, cfg, pick); return true; }
     if (intent === 'deny') { c.data.preguntas.shift(); askNext_(from, c, cfg, 'Listo, lo dejo por fuera.'); return true; }
+    if (isNewOrder_(norm, intent, q)) return false; // otro pedido: se anota y se repite la pregunta pendiente
     return retryQuestion_(from, c, cfg);
   }
   // Cantidad o unidad
@@ -731,6 +742,7 @@ function answerQuestion_(from, c, cfg, text, norm, intent) {
   if (!p) { c.data.preguntas.shift(); askNext_(from, c, cfg, ''); return true; }
   var qty = null, unit = null;
   if (it) { qty = it.qty; unit = it.unit; } else if (bare) { qty = Number(bare[1]); } else if (unitOnly && q.qty) { qty = q.qty; unit = unitOnly; }
+  if (isNewOrder_(norm, intent, q)) return false;
   if (qty === null) {
     if (intent === 'deny') { c.data.preguntas.shift(); askNext_(from, c, cfg, 'Listo, lo dejo por fuera.'); return true; }
     if (intent === 'order' || intent === 'change') return false;
@@ -740,6 +752,15 @@ function answerQuestion_(from, c, cfg, text, norm, intent) {
   if (!conv.ok) return retryQuestion_(from, c, cfg);
   setQuestionQty_(from, c, cfg, p, conv.qty);
   return true;
+}
+
+/** ¿La respuesta es en realidad otro pedido (otros productos)? */
+function isNewOrder_(norm, intent, q) {
+  var parsed = parseOrderText_(norm);
+  var ids = parsed.items.map(function (x) { return x.id; });
+  parsed.asks.forEach(function (a) { if (a.id) ids.push(a.id); (a.options || []).forEach(function (o) { ids.push(o.id); }); });
+  var mine = [q.id].concat(q.options || []);
+  return ids.length > 0 && ids.every(function (id) { return mine.indexOf(id) < 0; });
 }
 
 function retryQuestion_(from, c, cfg) {

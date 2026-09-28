@@ -34,7 +34,10 @@ var NLU_STOP = ('de del la las el los un una unos unas y o con para por favor me
   'cuesta sale esta estan como que pedido pedir hacer agregar agrega agregue agregame pon ponme pongame ' +
   'anota anotame apunta apunteme tambien mas otro otra otros otras buenas buenos hola dias tardes noches ' +
   'porfa gracias si no bien kilo poquito poquitico poco algo cuantos cuantas varios varias porque pues ya ahora hoy mañana manana este esta esa ese eso solo cada ' +
-  'bueno buena aprox aproximadamente sumerce veci vecino vecina amigo amiga senor senora don dona').split(' ');
+  'bueno buena aprox aproximadamente sumerce veci vecino vecina amigo amiga senor senora don dona ' +
+  'ome uy ay pues mijo mija parce hagame favor vea oiga oigame hola necesita necesito necesitan sirve hacer buen buena rico rica').split(' ');
+// Colores y tamaños: por sí solos no nombran un producto ("la fruta verde" no es "manzana verde").
+var NLU_WEAK = 'verde verdes roja rojas rojo rojos blanca blancas blanco amarilla amarillas amarillo morada morado grande grandes pequena pequeno mixto mixta especial original entera entero'.split(' ');
 
 // ───────────────────────── 1. Normalizar ─────────────────────────
 
@@ -210,7 +213,7 @@ function matchProducts_(text, index) {
   index = index || productIndex_();
   var words = significant_(normText_(text).split(' '));
   var q = words.filter(function (w) { return inVocab_(w, index); });
-  if (!q.length) return { candidates: [], extra: words, known: [] };
+  if (!q.length || q.every(function (w) { return NLU_WEAK.indexOf(stem_(w)) >= 0 || NLU_WEAK.indexOf(w) >= 0; })) return { candidates: [], extra: words, known: [] };
   var scored = index.list.map(function (it) {
     var best = 0;
     it.phrases.forEach(function (ph) { best = Math.max(best, phraseScore_(q, ph)); });
@@ -229,7 +232,7 @@ function matchProducts_(text, index) {
 function resolveProduct_(match) {
   var c = match.candidates;
   if (!c.length || c[0].score < NLU_ASK) {
-    return { status: 'none', options: c.filter(function (x) { return x.score >= 0.4; }).slice(0, 3) };
+    return { status: 'none', options: c.filter(function (x) { return x.score >= 0.5; }).slice(0, 3) };
   }
   var top = c[0];
   var close = c.filter(function (x) { return top.score - x.score < NLU_MARGIN; });
@@ -385,6 +388,13 @@ function splitItems_(norm, units) {
     // "2 de tomate" → cantidad sin unidad; "tomate 2 libras" también funciona.
     var sig = significant_(rest);
     if (!sig.length && qty === null) return;
+    // "jugo de mora, 1 libra": la cantidad suelta es del producto anterior.
+    if (!sig.length && items.length && items[items.length - 1].qty === null) {
+      items[items.length - 1].qty = qty;
+      items[items.length - 1].unit = unit;
+      items[items.length - 1].raw += ', ' + part;
+      return;
+    }
     items.push({ raw: part, qty: qty, unit: unit, words: rest });
   });
   return items;
