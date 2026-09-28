@@ -62,7 +62,8 @@ function adminData_() {
       cliente: String(r.cliente), telefono: String(r.telefono), entrega: String(r.entrega),
       direccion: String(r.direccion), notas: String(r.notas), items: items,
       subtotal: num_(r.subtotal, 0), domicilio: num_(r.domicilio, 0), total: num_(r.total, 0),
-      actualizado_por: String(r.actualizado_por || '')
+      actualizado_por: String(r.actualizado_por || ''),
+      pago: String(r.pago || ''), revisar: truthy_(r.revisar) ? 'si' : ''
     };
   }).reverse();
   var open = orders.filter(function (o) { return FINAL_STATES.indexOf(o.estado) < 0; });

@@ -6,7 +6,8 @@
  * Proveedores (Config ia_proveedor):
  *   ollama     modelo local (gratis). Config ia_url (ej. http://localhost:11434) e ia_modelo (ej. qwen2.5:14b).
  *              Desde Apps Script la URL debe ser pública (túnel); ver docs/RUNBOOK.md.
- *              Token opcional del túnel en Propiedades del script: OLLAMA_TOKEN.
+ *              Protección del túnel en Propiedades del script: OLLAMA_ACCESS_ID + OLLAMA_ACCESS_SECRET
+ *              (Cloudflare Access) u OLLAMA_TOKEN (Authorization: Bearer, si usas otro proxy).
  *   anthropic  Claude Haiku 4.5. Clave en Propiedades del script: ANTHROPIC_API_KEY.
  *
  * Límites (Config): ia_presupuesto_mes_usd, ia_presupuesto_dia_usd, ia_llamadas_hora, ia_llamadas_dia.
@@ -211,6 +212,11 @@ function llmCallAnthropic_(lc, prefix, userText) {
 function llmCallOllama_(lc, prefix, userText) {
   var headers = {};
   if (secret_('OLLAMA_TOKEN')) headers.Authorization = 'Bearer ' + secret_('OLLAMA_TOKEN');
+  // Túnel de Cloudflare protegido con Cloudflare Access (token de servicio): ver docs/RUNBOOK.md.
+  if (secret_('OLLAMA_ACCESS_ID')) {
+    headers['CF-Access-Client-Id'] = secret_('OLLAMA_ACCESS_ID');
+    headers['CF-Access-Client-Secret'] = secret_('OLLAMA_ACCESS_SECRET');
+  }
   var res = UrlFetchApp.fetch(lc.url + '/api/chat', {
     method: 'post',
     contentType: 'application/json',

@@ -196,12 +196,13 @@
 
   // ---------- pedidos ----------
 
-  var STATE_LABEL = { pendiente: 'Pendiente', confirmado: 'Confirmado', entregado: 'Entregado', cancelado: 'Cancelado' };
+  var STATE_LABEL = { pendiente: 'Pendiente', confirmado: 'Confirmado', en_preparacion: 'En preparación', en_camino: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado' };
+  var FINAL = ['entregado', 'cancelado'];
 
   function renderOrders() {
     var orders = state.data.pedidos;
-    var open = orders.filter(function (o) { return o.estado === 'pendiente' || o.estado === 'confirmado'; });
-    var closed = orders.filter(function (o) { return o.estado === 'entregado' || o.estado === 'cancelado'; });
+    var open = orders.filter(function (o) { return FINAL.indexOf(o.estado) < 0; });
+    var closed = orders.filter(function (o) { return FINAL.indexOf(o.estado) >= 0; });
     var html = open.length
       ? open.map(orderCard).join('')
       : '<div class="empty">' + NF.icon('basket', 'empty-icon') + '<p>No hay pedidos abiertos.</p><p class="fine">La lista se revisa sola cada minuto.</p></div>';
@@ -218,7 +219,11 @@
     if (o.estado === 'pendiente') {
       actions = '<button class="btn primary" data-order="' + esc(o.nro) + '" data-to="confirmado">Confirmar</button>' +
         '<button class="btn danger" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
-    } else if (o.estado === 'confirmado') {
+    } else if (o.estado === 'confirmado' || o.estado === 'en_preparacion') {
+      actions = '<button class="btn primary" data-order="' + esc(o.nro) + '" data-to="en_camino">En camino</button>' +
+        '<button class="btn" data-order="' + esc(o.nro) + '" data-to="entregado">Entregado</button>' +
+        '<button class="btn danger" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
+    } else if (o.estado === 'en_camino') {
       actions = '<button class="btn primary" data-order="' + esc(o.nro) + '" data-to="entregado">Entregado</button>' +
         '<button class="btn danger" data-order="' + esc(o.nro) + '" data-to="cancelado">Cancelar</button>';
     }
@@ -233,6 +238,8 @@
         ? NF.icon('moped') + '<span>' + esc(o.direccion) + '</span>'
         : NF.icon('storefront') + '<span>Recoge en la tienda</span>') + '</p>' +
       (o.notas ? '<p class="order-meta order-note">' + NF.icon('note-pencil') + '<span>' + esc(o.notas) + '</span></p>' : '') +
+      (o.pago ? '<p class="order-meta">' + NF.icon('note-pencil') + '<span>Pago: ' + esc(o.pago) + '</span></p>' : '') +
+      (o.revisar === 'si' ? '<p class="order-meta order-note"><span>🔎 Pedido grande: revísalo antes de confirmar</span></p>' : '') +
       '<div class="order-items">' + o.items.map(function (l) {
         return NF.leaderRow('<b>' + NF.qty(l.cantidad) + ' ' + esc(NF.unitLabel(l.unidad)) + '</b> ' + esc(l.nombre), NF.money(l.total));
       }).join('') +
