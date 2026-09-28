@@ -5,36 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Natural Fruver Pereira — Catálogo</title>
   <meta name="description" content="Frutas, verduras y más en Pereira. Mira precios, arma tu pedido y envíalo por WhatsApp.">
-  <meta name="theme-color" content="#1f7a3a">
+  <meta name="theme-color" content="#F4EEE1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121714" media="(prefers-color-scheme: dark)">
   <meta property="og:title" content="Natural Fruver Pereira — Catálogo">
   <meta property="og:description" content="Frutas y verduras frescas. Arma tu pedido y envíalo por WhatsApp.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="img/icon.svg">
   <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
   <header class="top">
     <div class="top-row">
       <a class="brand" href="./" aria-label="Natural Fruver, inicio">
-        <img src="img/icon.svg" alt="" width="36" height="36">
-        <span>
-          <strong id="store-name">Natural Fruver</strong>
-          <small id="open-state" class="open-state" hidden></small>
-        </span>
+        <span class="wordmark" id="store-name">Natural Fruver</span>
+        <span class="brand-sub">Pereira · frutas y verduras</span>
       </a>
-      <a id="ig-link" class="icon-link" href="https://www.instagram.com/naturalfruverpereira/" target="_blank" rel="noopener" aria-label="Instagram">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.3" fill="currentColor"/></svg>
+      <a id="ig-link" class="icon-btn" href="https://www.instagram.com/naturalfruverpereira/" target="_blank" rel="noopener" aria-label="Instagram de la tienda">
+        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-instagram-logo"></use></svg>
       </a>
     </div>
-    <label class="search">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="q" type="search" placeholder="Buscar: mango, aguacate, cilantro…" autocomplete="off" enterkeyhint="search" aria-label="Buscar productos">
-    </label>
-    <nav id="chips" class="chips" aria-label="Categorías"></nav>
+    <p id="open-state" class="open-state" hidden></p>
   </header>
+  <div class="top-sticky">
+    <label class="search">
+      <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-magnifying-glass"></use></svg>
+      <span class="sr-only">Buscar productos</span>
+      <input id="q" type="search" placeholder="Buscar en el mercado…" autocomplete="off" enterkeyhint="search">
+    </label>
+    <nav id="chips" class="tabs-cat" aria-label="Categorías"></nav>
+  </div>
 
-  <p id="demo-note" class="notice" hidden>Modo demostración: productos y precios de ejemplo. Los pedidos no se guardan.</p>
+  <p id="demo-note" class="notice" hidden>Modo demostración — productos y precios de ejemplo. Los pedidos no se guardan.</p>
   <p id="banner" class="banner" hidden></p>
 
   <main id="main" aria-live="polite">
@@ -45,44 +49,48 @@
 
   <footer class="foot" id="foot"></footer>
 
-  <button id="cart-button" class="cart-fab" type="button" hidden>
-    <span class="cart-fab-count" id="cart-count">0</span>
-    <span>Ver pedido</span>
-    <strong id="cart-total">$0</strong>
+  <button id="cart-button" class="cart-bar" type="button" hidden>
+    <span class="cart-bar-count" id="cart-count">0</span>
+    <span class="cart-bar-label">Ver pedido</span>
+    <strong id="cart-total" class="cart-bar-total">$0</strong>
   </button>
 
   <!-- Detalle de producto -->
-  <dialog id="product-dialog" class="sheet">
+  <dialog id="product-dialog" class="sheet" aria-label="Detalle del producto">
     <div id="product-body"></div>
   </dialog>
 
   <!-- Carrito y datos de entrega -->
-  <dialog id="cart-dialog" class="sheet">
-    <div class="sheet-head">
-      <h2>Tu pedido</h2>
-      <button type="button" class="close" data-close aria-label="Cerrar">×</button>
+  <dialog id="cart-dialog" class="sheet" aria-labelledby="cart-title">
+    <div class="sheet-head" tabindex="-1" autofocus>
+      <h2 id="cart-title">Tu pedido</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Cerrar">
+        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-x"></use></svg>
+      </button>
     </div>
     <div id="cart-body"></div>
   </dialog>
 
   <template id="checkout-template">
-    <form id="checkout" class="checkout" novalidate>
-      <h3>Datos para la entrega</h3>
+    <form id="checkout" class="form" novalidate>
+      <h3 class="rule-title">Datos de entrega</h3>
       <div class="seg" role="radiogroup" aria-label="Tipo de entrega">
-        <label><input type="radio" name="entrega" value="domicilio" checked> <span>Domicilio</span></label>
-        <label><input type="radio" name="entrega" value="recoger"> <span>Recoger en tienda</span></label>
+        <label><input type="radio" name="entrega" value="domicilio" checked>
+          <span><svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-moped"></use></svg> Domicilio</span></label>
+        <label><input type="radio" name="entrega" value="recoger">
+          <span><svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-storefront"></use></svg> Recoger</span></label>
       </div>
       <label>Nombre <input name="nombre" autocomplete="name" required maxlength="80"></label>
       <label>Teléfono / WhatsApp <input name="telefono" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20"></label>
-      <label data-for="domicilio">Dirección y barrio <input name="direccion" autocomplete="street-address" maxlength="200" placeholder="Ej: Cra 7 # 20-30, Centro"></label>
-      <label>Notas (opcional) <textarea name="notas" rows="2" maxlength="300" placeholder="Ej: aguacates para hoy, maduros"></textarea></label>
+      <label data-for="domicilio">Dirección y barrio <input name="direccion" autocomplete="street-address" maxlength="200" placeholder="Cra 7 # 20-30, Centro"></label>
+      <label>Notas <span class="opt">(opcional)</span> <textarea name="notas" rows="2" maxlength="300" placeholder="Aguacates para hoy, maduros"></textarea></label>
       <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       <p class="form-error" id="checkout-error" role="alert" hidden></p>
       <button class="btn primary big" type="submit" id="send-order">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>
+        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-whatsapp-logo"></use></svg>
         Enviar pedido por WhatsApp
       </button>
-      <p class="fine">Al enviar, separamos tus productos y abrimos WhatsApp con el pedido listo. Te confirmamos por ahí.</p>
+      <p class="fine">Separamos tus productos y abrimos WhatsApp con el pedido listo. Te confirmamos por ahí.</p>
     </form>
   </template>
 

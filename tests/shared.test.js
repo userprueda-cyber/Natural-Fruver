@@ -75,9 +75,16 @@ test('the WhatsApp message lists the order and customer details', () => {
   assert.ok(link.startsWith('https://wa.me/573001234567?text=*Pedido%20NF-0007'));
 });
 
-test('placeholder emoji comes from the product name, then the category', () => {
-  assert.equal(NF.productEmoji({ nombre: 'Mango Tommy' }), '🥭');
-  assert.equal(NF.productEmoji({ nombre: 'Limón Tahití' }), '🍋');
-  assert.equal(NF.productEmoji({ nombre: 'Huevos AA x 30' }), '🥚');
-  assert.equal(NF.productEmoji({ nombre: 'Lulo' }, '🍓'), '🍓');
+test('placeholder tile uses the initial and a hue per category family', () => {
+  assert.deepEqual(NF.placeholderTile({ nombre: 'mango Tommy', categoria: 'Frutas' }), { initial: 'M', hue: 28 });
+  assert.equal(NF.placeholderTile({ nombre: 'Ñame', categoria: 'Tubérculos' }).initial, 'Ñ');
+  assert.equal(NF.placeholderTile({ nombre: 'Lechuga', categoria: 'Verduras' }).hue, 128);
+  const other = NF.placeholderTile({ nombre: 'Panela', categoria: 'Despensa' });
+  assert.equal(other.hue, NF.placeholderTile({ nombre: 'Arroz', categoria: 'Despensa' }).hue);
+});
+
+test('icons reference the sprite and are hidden from screen readers', () => {
+  const svg = NF.icon('map-pin');
+  assert.match(svg, /href="img\/icons\.svg#i-map-pin"/);
+  assert.match(svg, /aria-hidden="true"/);
 });
