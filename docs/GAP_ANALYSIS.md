@@ -139,3 +139,38 @@ Legend: ✅ have · 🟡 partial · ❌ missing. Effort: S (< ½ day), M (1–2 
   - `zonas_domicilio` text.
 
   None are flagged as unconfirmed. See OWNER_QUESTIONS.md.
+
+---
+
+# Status after Phases 1–4 (2026-09-28)
+
+**Every error-matrix row now has a defined behavior and an automated test** in `tests/matrix.test.js`, named `row NN: …`. The suite has 121 tests in total (`npm test`), including:
+- `tests/nlu.test.js`: 574 messy messages;
+- `tests/hardening.test.js`: attacks, WhatsApp limits, modes, privacy, load, cost, secret scan;
+- `tests/relay.test.js`: signature, queue, retries, health;
+- the original bot, backend and Telegram tests.
+
+| Bug found in Phase 0 | Fixed by |
+|---|---|
+| 1 Double order on double tap or retry | `orderKey_` (never-resetting version + cart hash) checked under the lock in `createOrder_`. Rows 02, 05, 45 |
+| 2 Lost inbound messages | Relay queue (durable) or 3 retries. Rows 04, 05 |
+| 3 Status webhooks dropped | Relay forwards `failed` statuses; `handleStatus_` marks alerts failed or tells staff. Row 47 |
+| 4 Worker alert not retried | `aviso` column + `retryOrderAlerts_` every 5 min, e-mail after 3 failures. Row 47 |
+| 5 Silent quantity cap | Rejected with an explanation and a handoff offer. Row 24 |
+| 6 Meta calls inside the lock | `syncCatalogQuietly_` runs after the lock is released |
+| 7 Lossy dedupe | Kept the cache, plus idempotent orders and the >24 h event cutoff (DECISIONS D9) |
+
+## Still open (needs people, money or Meta, not code)
+- **Coexistence onboarding** needs a Tech Provider or BSP (D4).
+- **Payment method** on the Meta account (deadline **30 Sep 2026**).
+- **Templates** `aviso_pedido` and `estado_pedido` must be submitted and approved in WhatsApp Manager.
+- **Owner facts** (OWNER_QUESTIONS.md): prices, payment methods, zones, festivos, policies, backup number, tone.
+- **Legal review** of `site/privacidad.html`, and publishing it.
+- **Real-device tests** on Meta's test number, then the real number (Android and iPhone, voice notes, location).
+- **UAT** with the owner and 5–10 friendly customers, then rollout (docs/ROLLOUT.md).
+- **Paid options to enable:** the Cloudflare Queue (Workers Paid) and, if used, the Anthropic key plus the provider spend cap.
+- **Known limits:**
+  - no durable per-customer lock (D9);
+  - the English reply is minimal (menu only);
+  - images aren't parsed (always handed to a person, by design);
+  - Haiku won't prompt-cache at the current prefix size (COST_MODEL).

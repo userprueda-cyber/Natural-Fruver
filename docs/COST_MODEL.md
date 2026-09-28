@@ -78,3 +78,9 @@ Cap: 60 s per audio, 5 audios per customer per day, and a global cap of 300 min/
 Not included: a BSP fee (D4) or a paid domain.
 
 **Conclusion:** the biggest variable cost is **Meta's service-message charge**, not the LLM. Keeping replies to one message per turn matters more for cost than model choice.
+
+## Update after implementation (2026-09-28)
+- **Measured resolution without AI:** 99.3% on the 574-message messy set (`node scripts/nlu-report.js`). Real traffic will be messier. Budget for 5–15% of messages reaching the AI, not the 15–30% assumed above.
+- **Measured prompt size:** about 3,250 input tokens per AI call. That's below Haiku's 4,096-token caching minimum, so assume no caching. Cost per call ≈ 3,250×$1/M + 150×$5/M ≈ **US$0.004**. Expected month: 9 calls/day × 30 × 0.004 ≈ **US$1.1**. Worst case (60/day): ≈ US$7.2, still under the US$10 cap.
+- **Local model (Ollama):** US$0 per call. But it needs an always-on computer plus a Cloudflare Tunnel, and each reply takes 7–40 s (see D10).
+- **Meta stays the dominant cost** (placeholder rate). Confirm the Colombian service rate in WhatsApp Manager.

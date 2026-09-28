@@ -30,6 +30,11 @@ Necesitas (una sola vez, ~1 hora):
 
 ## 2. Conectar el número actual (coexistencia)
 
+> ⚠️ **Verificado el 28/09/2026:** según la documentación de Meta, conectar un número que ya usa la app WhatsApp Business
+> ("coexistencia") solo lo pueden hacer **Tech Providers o Solution Partners** por *Embedded Signup*. Si en tu app no aparece
+> la opción de abajo, necesitas registrar tu app como Tech Provider o usar un proveedor (BSP) con coexistencia
+> (360dialog, YCloud…). Ver `DECISIONS.md` (D4) y `docs/PLATFORM_FACTS.md`.
+
 Así el número sigue funcionando en la app WhatsApp Business del celular **y** el bot responde.
 Todo lo que el bot envía y recibe también se ve en la app.
 
@@ -121,6 +126,11 @@ Para que los avisos de pedidos siempre lleguen:
 | `oferta mango 5000` · `oferta mango 5000 hasta 15/10` · `oferta mango quitar` | ofertas |
 | `stock mango 20` · `stock mango +5` · `stock mango no` | inventario (`no` = no contar) |
 | `agotado fresa` · `disponible fresa` | prender / apagar un producto |
+| `preparando 12` · `en camino 12` · `deshacer 12` | más estados; deshacer un cambio (30 min) |
+| `asesor` · `tomar 300…` · `devolver 300…` · `responder 300… texto` | chats que atiende una persona |
+| `pausar` · `reanudar` | apagar / prender el bot para todos |
+| `hoy` · `sinresolver` | resumen del día · lo que el bot no entendió |
+| `bloquear 300…` · `desbloquear 300…` | números que abusan |
 | `comprar` | usar el bot como cliente (para probar) |
 
 Los cambios pasan al catálogo de WhatsApp enseguida. Si editas la hoja a mano, se
@@ -135,9 +145,10 @@ domicilio → dirección → nombre → *Confirmar*. Revisa la pestaña Pedidos.
 ## Costos
 
 - **Google** (hoja y Apps Script) y **Cloudflare** (relé): gratis para el volumen de una tienda.
-- **Meta:** responder a clientes que escriben primero no tiene costo. Las plantillas (el aviso
-  opcional a trabajadores) tienen un costo pequeño por mensaje. Revisa los precios vigentes en
-  la página de precios de WhatsApp Business Platform antes de activarlas.
+- **Meta:** desde el **1 de octubre de 2026** las respuestas del bot se cobran después de 1.000 al mes por número
+  (las que escribes a mano desde la app siguen gratis) y **la cuenta necesita un medio de pago** (fecha límite
+  reportada: 30 de septiembre de 2026). Revisa WhatsApp Manager → Facturación. Ver `docs/COST_MODEL.md`.
+- **IA (opcional):** modelo local con Ollama ($0) o Claude Haiku (~US$1/mes), con tope en Config.
 
 ## Límites que conviene saber
 

@@ -14,7 +14,7 @@ Each entry covers the choice, the alternatives, and why. Newest at the bottom. S
 
 **Deviation from the master prompt:** no Postgres or Fastify. Each prompt requirement is still met; D2 and D3 describe the substitutes.
 
-## D2 — Make the Cloudflare side the durable front door (proposed)
+## D2 — Make the Cloudflare side the durable front door (accepted in part, 2026-09-28)
 **Choice:** grow `relay/worker.js` from a stateless forwarder into:
 1. **D1 (SQLite) `inbox` table** with a UNIQUE key on `wamid`. It gives durable dedupe (row 2), replay after an outage (row 5), and old-event rejection. Status webhooks go into `status_events`.
 2. **One Durable Object per customer phone.** It acts as a mutex so messages are processed one at a time and in order (rows 3, 45). A ~5 s **alarm** debounces bursts and merges them into one turn (§5.5). It also holds the fast-changing conversation state: cart, step, handoff flag and 24 h window timestamps.
@@ -35,7 +35,7 @@ Each entry covers the choice, the alternatives, and why. Newest at the bottom. S
 - Two runtimes (Worker and Apps Script) to keep consistent.
 - DO/D1/Queues free-tier limits need checking in Phase 1.
 
-## D3 — Where the "brain" runs (proposed)
+## D3 — Where the "brain" runs (superseded by D9)
 **Choice:** the Worker runs everything message-side (the conversation pipeline):
 - guards and normalization;
 - deterministic NLU;
@@ -79,7 +79,7 @@ Each entry covers the choice, the alternatives, and why. Newest at the bottom. S
 
 **Upside:** the owner's manual replies are free, and they arrive as `smb_message_echoes` webhooks. That is how the bot detects "the owner is handling this chat" (row 37).
 
-## D5 — LLM: Claude Haiku 4.5, optional and capped (proposed)
+## D5 — LLM: optional and capped (accepted; the provider is now pluggable, see D10)
 **Choice:** `claude-haiku-4-5-20251001` with a forced structured output, temperature 0, `max_tokens` ≈ 300, and a cached static prefix. It is called **only** when layers 0–2 are below confidence.
 **Guardrails:**
 - A usage ledger in D1.
@@ -89,7 +89,7 @@ Each entry covers the choice, the alternatives, and why. Newest at the bottom. S
 
 **Why:** cheapest capable model. The deterministic layers carry most traffic, so the LLM is an accuracy boost, not a dependency.
 
-## D6 — Voice notes: off until the owner opts in (proposed)
+## D6 — Voice notes: off until the owner opts in (accepted; provider Deepgram, see Stt.gs)
 **Choice:** in Phase 2, audio gets an honest "¿me lo escribe o le paso con un asesor?". STT (cheapest capable provider, ≤ 60 s, per-customer daily cap) arrives in Phase 3 behind a config flag, and any transcript with money-relevant content is confirmed with the customer before acting on it.
 
 ## D7 — Tone (pending owner)
@@ -97,3 +97,47 @@ The bot says "tú" today, while the master prompt defaults to "usted". Keep what
 
 ## D8 — Do not delete `repo/` without asking (accepted)
 It looks like an older partial copy of the project. It stays untouched until the developer confirms.
+
+## D9 — The brain stays in Apps Script; the relay adds durability only (accepted, 2026-09-28)
+**Choice:** conversation logic, NLU, AI calls and state all live in `apps-script/`. The Cloudflare relay:
+- verifies the signature and filters to our number and the useful events (messages, app echoes, failed statuses);
+- enqueues to a Cloudflare Queue (optional, recommended) or retries 3 times;
+- serves `/health`.
+
+**Why this revises D3:**
+1. **Testability.** The owner-facing test channel is Telegram (`npm run telegram`), which runs the *real* `.gs` files against the Sheet mock. With the brain in the Worker there would be two runtimes to test.
+2. **One place to deploy and debug.** The owner's developer already knows this stack.
+3. **Latency is acceptable.** The relay acks Meta in milliseconds, and Apps Script answers in about 1–3 s.
+
+**What we gave up from D2:**
+- A per-customer Durable Object. Burst merging is done in Apps Script instead: `collectBurst_` holds the text in the cache and waits `espera_rafaga_seg`, and only the last execution answers.
+- The durable wamid store. Dedupe is the cache (6 h) plus idempotent order keys, and events older than 24 h are dropped.
+
+The remaining risk is a burst arriving exactly at a cache eviction. At this shop's volume that's unlikely, and the idempotency key makes it harmless for orders.
+
+## D10 — AI provider is pluggable: Ollama (local) or Claude Haiku (accepted, 2026-09-28)
+**Choice:** `Config → ia_proveedor = ollama | anthropic`. Both return the same schema, and `validateLlm_` checks it in code.
+- **Default for testing: Ollama** with `qwen2.5:14b` on the developer's Mac (costs nothing, and data stays local).
+- **Recommended for production: Claude Haiku 4.5.** It needs no always-on computer, answers in about 1 s against 7–40 s locally, and costs about US$1/month in the expected scenario (docs/COST_MODEL.md, update).
+- If the owner insists on local: Cloudflare Tunnel plus Access service token (docs/RUNBOOK.md).
+
+**Measured with qwen2.5:14b (2026-09-28):**
+- Good at simple extraction.
+- Misclassifies intents: an order came back labelled "status".
+- Guesses products from descriptions: "fruta peluda" came back as pitaya.
+- Missed an injection written in Spanish, and copied products from the chat history.
+
+**Mitigations in code:**
+- items with product + quantity are treated as an order;
+- AI items must appear in the current message;
+- AI-picked products that the text doesn't clearly name are confirmed with the customer ("¿Te refieres a…?");
+- injection is checked by rules first, including leetspeak.
+
+## D11 — Default mode is `asistido` (accepted)
+Orders wait for a worker's ✅ unless `modo_bot = autonomo`. That's safer while real prices and policies are still placeholders. See docs/ROLLOUT.md.
+
+## D12 — Quarter-kilo steps for kg products (accepted)
+"Media libra" (0.25 kg) is a very common order in Pereira. kg products now sell in 0.25 steps, lb in 0.5, and everything else in whole units. A converted quantity that doesn't fit the step is rounded and marked "(aprox.)" in the reply; it's never changed silently.
+
+## D13 — Plain JavaScript, no TypeScript (accepted)
+Apps Script runs `.gs` (V8), and the tests run the same files through `vm`. Adding a TS build would split what's tested from what's deployed. **Deviation from the master prompt, on purpose.**

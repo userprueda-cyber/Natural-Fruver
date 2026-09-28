@@ -64,9 +64,11 @@ Re-check anything that isn't VERIFIED before Phase 1 code depends on it. Web too
 | Fact | Status | Notes |
 |---|---|---|
 | The cheap, fast model is **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`). | VERIFIED (from the environment's model list) | |
-| Haiku 4.5 costs about **$1 / MTok input** and **$5 / MTok output**. Cache writes cost about 1.25× input (5-min TTL), cache reads about 0.1× input. | UNVERIFIED (prior knowledge; my `claude-api` lookup failed) | used in COST_MODEL.md |
-| Prompt caching needs a minimum prefix length (a few thousand tokens for Haiku-class models). Our static prefix (instructions + compact catalog of 123 products with aliases) must clear that minimum, or caching silently won't apply. | UNVERIFIED | measure in Phase 3 |
-| Structured output can be forced with tool use (`tool_choice` forced) or JSON-schema output. | UNVERIFIED | |
+| Model id `claude-haiku-4-5`: **$1 / MTok input, $5 / MTok output**. Cache reads cost about 0.1× input and 5-minute cache writes about 1.25×. | VERIFIED (claude-api skill, models table cached 2026-09-25) | used in `Llm.gs` `ANTHROPIC_PRICES` |
+| Minimum cacheable prefix for **Haiku 4.5 is 4096 tokens**. Shorter prefixes silently don't cache. Our prefix measures about 3,250 tokens (Ollama's prompt_eval_count), so **it won't cache as is**. Either pad it with the full alias list and descriptions, or accept that it doesn't cache (at ~3.3k tokens the cost is ~US$0.004 per call, still tiny). | VERIFIED (claude-api skill `shared/prompt-caching.md`) | Phase 5: measure `cache_read_input_tokens` |
+| Raw HTTP headers: `x-api-key`, `anthropic-version: 2023-06-01`. Forced `tool_choice: {type:"tool"}` **is supported on Haiku 4.5**; only newer models reject it. | VERIFIED (claude-api skill) | Apps Script has no SDK, so raw HTTP is the right choice |
+| Usage fields: `input_tokens`, `output_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens`. | VERIFIED | written to the *Uso* sheet |
+| Local alternative: Ollama 0.32 with `qwen2.5:14b` on an Apple M5 (24 GB). About 7–40 s per call, and structured output via `format: <json schema>` works. | VERIFIED (measured on this machine) | DECISIONS D10 |
 | The Console supports workspace/org **spend limits**. That's our provider-side backstop. | UNVERIFIED | document exact steps in Phase 3 |
 
 ## Still to check (next pass, before Phase 1)
@@ -75,4 +77,4 @@ Re-check anything that isn't VERIFIED before Phase 1 code depends on it. Web too
 3. Webhook retry window and timeout (official page).
 4. Current interactive-message limits and typing-indicator API.
 5. Official Business Solution Terms text on AI.
-6. Haiku 4.5 pricing and minimum cache length (run the `claude-api` skill).
+6. ~~Haiku 4.5 pricing and minimum cache length~~ — done (see LLM table).
