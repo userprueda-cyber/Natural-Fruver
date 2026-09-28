@@ -188,7 +188,7 @@ function loadClient_(phone) {
   var last = toDate_(row.actualizado);
   if (row.paso && last && new Date().getTime() - last.getTime() > SESSION_HOURS * 3600 * 1000) {
     row.paso = '';
-    data = { perfil: data.perfil, aviso_datos: data.aviso_datos, turnos: data.turnos };
+    data = { perfil: data.perfil, aviso_datos: data.aviso_datos, turnos: data.turnos, version: data.version || 0 };
   }
   return { t: t, row: row, data: data };
 }
@@ -201,8 +201,17 @@ function saveClient_(c) {
 
 function resetClient_(c) {
   c.row.paso = '';
-  c.data = { perfil: c.data.perfil, aviso_datos: c.data.aviso_datos, turnos: c.data.turnos, lang: c.data.lang };
+  // version nunca vuelve a cero: es parte de la clave que evita pedidos dobles.
+  c.data = { perfil: c.data.perfil, aviso_datos: c.data.aviso_datos, turnos: c.data.turnos, lang: c.data.lang, version: c.data.version || 0 };
   saveClient_(c);
+}
+
+/** Clave de idempotencia: el mismo carrito (versión + contenido) confirmado dos veces es un solo pedido. */
+function orderKey_(from, c) {
+  var items = (c.data.carrito || []).map(function (x) { return x.id + '=' + x.cantidad; }).sort().join(',');
+  var h = 0;
+  for (var i = 0; i < items.length; i++) h = (h * 31 + items.charCodeAt(i)) | 0;
+  return from + ':' + (c.data.version || 0) + ':' + (h >>> 0).toString(36);
 }
 
 function pushTurn_(c, who, text) {
@@ -589,6 +598,12 @@ function addParsed_(from, c, cfg, parsed) {
   c.data.ultima = 'order';
   var cart = c.data.carrito || [];
   var added = [];
+  var tooMuch = [];
+  parsed.items = parsed.items.filter(function (it) {
+    var max = num_(it.row && it.row.max_cantidad, 0) || num_((productIndex_().list.filter(function (x) { return x.id === it.id; })[0] || { row: {} }).row.max_cantidad, 0) || MAX_QTY;
+    if (it.cantidad > max) { tooMuch.push(it.p.nombre + ': máximo ' + qtyStr_(max) + ' ' + unitLabel_(it.p.unidad) + ' por pedido (pediste ' + qtyStr_(it.cantidad) + ')'); return false; }
+    return true;
+  });
   parsed.items.forEach(function (it) {
     var line = cart.filter(function (x) { return x.id === it.id; })[0];
     if (line) line.cantidad = Math.round((num_(line.cantidad, 0) + it.cantidad) * 100) / 100;
@@ -606,6 +621,7 @@ function addParsed_(from, c, cfg, parsed) {
   if (added.length) {
     msg.push('Anoté ✅ ' + added.map(function (it) { return qtyStr_(it.cantidad) + ' ' + unitLabel_(it.p.unidad) + ' ' + it.p.nombre + (it.approx ? ' (aprox.)' : ''); }).join(', ') + '.');
   }
+  if (tooMuch.length) msg.push('⚠️ ' + tooMuch.join('\n') + '\nPara cantidades grandes te ayuda una persona: escribe *asesor*.');
   var missing = parsed.missing.filter(function (m) { return m.raw; });
   if (missing.length) {
     msg.push('No manejamos ' + missing.map(function (m) { return '"' + cut_(m.raw, 30) + '"'; }).join(', ') + ' 😕' +
@@ -615,7 +631,7 @@ function addParsed_(from, c, cfg, parsed) {
   if (questions.length) return askNext_(from, c, cfg, msg.join('\n'));
   if (!cart.length) {
     saveClient_(c);
-    return waButtons_(from, (msg.join('\n') || 'No encontré esos productos 🤔.') + '\n\nMira lo que tenemos:', [
+    return waButtons_(from, (msg.join('\n') || 'No encontré esos productos 🤔.') + '\n\n¿Qué más te anoto?', [
       { id: 'cat', title: '🛒 Ver productos' }, { id: 'asesor', title: '🙋 Hablar con asesor' }]);
   }
   return sendCart_(from, c, cfg, msg.join('\n'));
@@ -1377,7 +1393,7 @@ function confirmOrder_(from, c, cfg) {
   cfg = cfg || getConfig_();
   if (c.row.paso !== 'confirmar' || !c.data.carrito || !c.data.carrito.length) return sendMenu_(from, c, cfg);
   var res;
-  var clave = from + ':' + (c.data.version || 0);
+  var clave = orderKey_(from, c);
   var big = num_(cfg.pedido_grande_desde, 0);
   var subtotalNow = sum_(priceItems_(c.data.carrito).lines);
   var review = big > 0 && subtotalNow >= big;
@@ -1405,7 +1421,7 @@ function confirmOrder_(from, c, cfg) {
     }
     return waText_(from, err.message);
   }
-  if (res.duplicado) return; // doble toque o reintento: el pedido ya existe y ya se avisó
+  if (res.duplicado) { resetClient_(c); return; } // doble toque o reintento: el pedido ya existe y ya se avisó
   var data = c.data;
   var row = { nombre: c.row.nombre, telefono: from, direccion: c.row.direccion };
   resetClient_(c);
