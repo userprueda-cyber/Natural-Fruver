@@ -843,9 +843,27 @@ function sendCart_(from, c, cfg, prefix) {
 
 function finishCart_(from, c, cfg) {
   if (!(c.data.carrito || []).length) { saveClient_(c); return sendMenu_(from, c, cfg); }
+  // Una sola sugerencia por pedido, de lo destacado y disponible; nunca se repite después de un "no".
+  if (!c.data.sugerido && normalize_(cfg.sugerir) !== 'no') {
+    var s = suggestion_(c);
+    if (s) {
+      c.data.sugerido = s.id;
+      saveClient_(c);
+      return waButtons_(from, '¿Te agrego *' + s.nombre + '* (' + money_(priceOf_(s)) + '/' + unitLabel_(s.unidad) + ')? ' + (s.oferta !== null ? '🏷️ Está en oferta.' : '😊'), [
+        { id: 'sug:si', title: '✅ Sí, agrégalo' }, { id: 'sug:no', title: 'No, gracias' }]);
+    }
+  }
   c.row.paso = 'entrega';
   saveClient_(c);
   return askDelivery_(from, c, '¿Cómo quieres recibir tu pedido?');
+}
+
+/** Producto para sugerir: primero ofertas, luego destacados; que no esté ya en el carrito. */
+function suggestion_(c) {
+  var inCart = (c.data.carrito || []).map(function (x) { return x.id; });
+  var list = visibleProducts_().filter(function (p) { return inCart.indexOf(p.id) < 0 && (p.destacado || p.oferta !== null); });
+  list.sort(function (a, b) { return ((b.oferta !== null) - (a.oferta !== null)) || (a.orden - b.orden); });
+  return list[0] || null;
 }
 
 /** Vuelve a mostrar el paso en que quedó el cliente. */
@@ -985,6 +1003,12 @@ function customerReply_(from, c, cfg, id) {
   if (id === 'repetir') return repeatLastOrder_(from, c, cfg);
   if (id === 'seguir') { saveClient_(c); return resumeFlow_(from, c, cfg, ''); }
   if (id === 'fin') return finishCart_(from, c, cfg);
+  if (id === 'sug:no') return finishCart_(from, c, cfg);
+  if (id === 'sug:si') {
+    if (!c.data.sugerido) return finishCart_(from, c, cfg);
+    c.data.preguntas = [{ kind: 'qty', id: c.data.sugerido, raw: '', qty: null, unit: null, options: [], tries: 0 }];
+    return askNext_(from, c, cfg, '');
+  }
   if (id === 'mas') {
     c.row.paso = (c.data.carrito || []).length ? 'carrito' : '';
     saveClient_(c);
@@ -1454,6 +1478,7 @@ function confirmOrder_(from, c, cfg) {
   var body = '✅ *¡Pedido ' + res.nro + ' recibido!*\n\n' + orderLines_(res.lineas).join('\n') +
     '\n\n*Total: ' + money_(res.total) + '*' +
     (review ? '\n\n🔎 Como es un pedido grande, una persona lo revisa y te confirma.' : '\n\nTe escribimos apenas lo confirmemos.') +
+    (data.entrega === 'domicilio' && !isBlank_(cfg.hora_corte_mismo_dia) ? '\n🛵 Los pedidos confirmados antes de las ' + cfg.hora_corte_mismo_dia + ' se entregan el mismo día.' : '') +
     payLine +
     '\n\nPara cambiarlo o cancelarlo, escribe *cancelar pedido*' + (cfg.politica_cancelacion ? ' (' + cfg.politica_cancelacion + ')' : '') + '. ¡Gracias! 💚';
   waText_(from, body, { purpose: 'confirmacion', nro: res.nro });

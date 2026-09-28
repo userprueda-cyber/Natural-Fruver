@@ -40,6 +40,7 @@ var DEFAULT_CONFIG = [
   ['minutos_escalar_asesor', 10, 'Si nadie atiende a un cliente que pidió asesor en estos minutos, se avisa al número de respaldo'],
   ['minutos_devolver_bot', 120, 'Minutos sin mensajes de la persona antes de que el bot vuelva a atender ese chat'],
   ['horas_recordatorio_carrito', 3, 'Recordar una vez un pedido sin terminar después de estas horas (0 = nunca)'],
+  ['sugerir', 'si', 'si = al terminar el pedido, el bot sugiere UN producto en oferta o destacado (una vez por pedido)'],
   ['hora_resumen', 20, 'Hora del resumen diario por WhatsApp a los trabajadores (vacío = no se envía)'],
   ['correo_alertas', '', 'Correo para alertas técnicas (token vencido, fallas)'],
   ['plantilla_estado_pedido', '', 'Plantilla de Meta para avisar cambios de estado si el cliente no ha escrito en 24 h (vacío = se avisa al trabajador)'],

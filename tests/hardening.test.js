@@ -297,3 +297,22 @@ test('no secrets committed: tokens and keys never appear in the repository', () 
   const gi = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
   ['.env', '.dev.vars', '.telegram-state.json'].forEach((f) => assert.ok(gi.includes(f), '.gitignore misses ' + f));
 });
+
+test('upsell: at most one suggestion per order, from offers/featured, never after a "no"', () => {
+  const env = setupBot({ config: { sugerir: 'si' } });
+  send(env, CUSTOMER, text('3 aguacates'));
+  let out = send(env, CUSTOMER, reply('fin'));
+  assert.match(bodyOf(out[0]), /Te agrego \*Mango Tommy\*[\s\S]*oferta/);
+  assert.deepEqual(buttonIds(out[0]), ['sug:si', 'sug:no']);
+  out = send(env, CUSTOMER, reply('sug:no'));
+  assert.deepEqual(buttonIds(out[0]), ['ent:domicilio', 'ent:recoger', 'cancelar']);
+  send(env, CUSTOMER, text('2 kilos de fresa'));
+  out = send(env, CUSTOMER, reply('fin'));
+  assert.deepEqual(buttonIds(out[0]), ['ent:domicilio', 'ent:recoger', 'cancelar'], 'not asked again');
+  // Aceptar: pregunta la cantidad y lo agrega.
+  send(env, OTHER, text('3 aguacates'));
+  send(env, OTHER, reply('fin'));
+  send(env, OTHER, reply('sug:si'));
+  send(env, OTHER, reply('q:1'));
+  assert.deepEqual(cartOf(env, OTHER).map((x) => x.id).sort(), ['aguacate-papelillo', 'mango-tommy']);
+});

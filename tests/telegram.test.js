@@ -66,7 +66,8 @@ test('telegram runner: menu → catalog → cart → pickup → confirm → work
   const state = path.join(os.tmpdir(), 'nf-telegram-' + process.pid + '.json');
   const child = spawn(process.execPath, [path.join(__dirname, '..', 'scripts', 'telegram.js')], {
     env: Object.assign({}, process.env, {
-      TELEGRAM_TOKEN: 'test', TELEGRAM_API: 'http://127.0.0.1:' + fake.server.address().port, TELEGRAM_STATE: state
+      TELEGRAM_TOKEN: 'test', TELEGRAM_API: 'http://127.0.0.1:' + fake.server.address().port, TELEGRAM_STATE: state,
+      TELEGRAM_EXPORTS: path.join(os.tmpdir(), 'nf-exports-' + process.pid), TELEGRAM_AI: 'off'
     }),
     stdio: 'ignore'
   });
@@ -121,6 +122,14 @@ test('telegram runner: menu → catalog → cart → pickup → confirm → work
     fake.text('pedidos');
     m = await next('lista de pedidos', (c) => /Pedidos abiertos/.test(c.params.text || ''));
     assert.match(m.params.text, /NF-0001<\/b> · Ana Prueba/);
+
+    fake.text('/pedidos');
+    m = await next('/pedidos', (c) => /<b>Pedidos \(1\)<\/b>/.test(c.params.text || ''));
+    assert.match(m.params.text, /NF-0001<\/b> · pendiente · \$12\.000[\s\S]*2 kg Mango Tommy/);
+    fake.text('/exportar');
+    m = await next('/exportar', (c) => /Pedidos\.csv/.test(c.params.text || ''));
+    const csv = fs.readFileSync(path.join(os.tmpdir(), 'nf-exports-' + process.pid, 'Pedidos.csv'), 'utf8');
+    assert.match(csv, /NF-0001/);
   } finally {
     child.kill();
     fake.server.close();

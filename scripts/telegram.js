@@ -12,7 +12,8 @@
 // al tocar "Enviar pedido" el bot recibe exactamente el mismo mensaje "order" de WhatsApp.
 //
 // Comandos de prueba: /trabajador (cambiar entre cliente y trabajador), /reiniciar, /ayuda,
-// /tareas (correr ya las tareas de cada 5 min), /modo sombra|asistido|autonomo, /ia on|off.
+// /tareas (correr ya las tareas de cada 5 min), /modo sombra|asistido|autonomo, /ia on|off,
+// /pedidos (ver los pedidos), /exportar (la hoja simulada a exports/*.csv para abrir en Excel).
 //
 // IA local: si Ollama está corriendo (http://localhost:11434) con el modelo OLLAMA_MODEL
 // (por defecto qwen2.5:14b), el bot la usa para los mensajes que las reglas no entienden.
@@ -207,6 +208,43 @@ async function showCart(chat) {
   ] } });
 }
 
+// ───────────── Ver pedidos y exportar la hoja simulada ─────────────
+function rowsOf(name) {
+  const sh = env.ss.getSheetByName(name);
+  if (!sh || !sh.data.length) return [];
+  const [head, ...rows] = sh.data;
+  return rows.filter((r) => r.some((v) => v !== '' && v !== undefined)).map((r) => Object.fromEntries(head.map((h, i) => [h, r[i] === undefined ? '' : r[i]])));
+}
+
+function ordersText() {
+  const orders = rowsOf('Pedidos').filter((o) => o.nro);
+  if (!orders.length) return 'Todavía no hay pedidos en la hoja simulada.';
+  const icons = { pendiente: '🕒', confirmado: '✅', en_preparacion: '🧺', en_camino: '🛵', entregado: '📦', cancelado: '❌' };
+  return '<b>Pedidos (' + orders.length + ')</b>\n\n' + orders.slice(-20).reverse().map((o) => {
+    let items = [];
+    try { items = JSON.parse(o.items || '[]'); } catch (e) { /* nada */ }
+    return (icons[o.estado] || '•') + ' <b>' + o.nro + '</b> · ' + o.estado + ' · ' + tg.money(Number(o.total) || 0) + '\n' +
+      tg.toHtml(String(o.cliente)) + ' · ' + (o.entrega === 'domicilio' ? '🛵 ' + tg.toHtml(String(o.direccion)) : '🏪 recoge') +
+      (o.pago ? ' · 💳 ' + tg.toHtml(String(o.pago)) : '') + '\n' +
+      items.map((l) => '  • ' + l.cantidad + ' ' + (tg.UNITS[l.unidad] || l.unidad) + ' ' + tg.toHtml(l.nombre)).join('\n');
+  }).join('\n\n');
+}
+
+/** Escribe cada pestaña de la hoja simulada como CSV en exports/ (no se sube a git). */
+function exportCsv() {
+  const dir = process.env.TELEGRAM_EXPORTS || path.join(__dirname, '..', 'exports');
+  fs.mkdirSync(dir, { recursive: true });
+  const cell = (v) => {
+    const t = v instanceof Date ? v.toISOString() : v === undefined || v === null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  };
+  return Object.values(env.ss.sheets).map((sh) => {
+    const file = path.join(dir, sh.name + '.csv');
+    fs.writeFileSync(file, '\ufeff' + sh.data.map((r) => r.map(cell).join(',')).join('\n'));
+    return process.env.TELEGRAM_EXPORTS ? file : path.relative(path.join(__dirname, '..'), file);
+  });
+}
+
 // ───────────── Comandos de prueba ─────────────
 async function toggleWorker(chat, name) {
   const t = env.gs.table_('Trabajadores');
@@ -223,7 +261,8 @@ async function toggleWorker(chat, name) {
 }
 
 const HELP = 'Comandos de prueba:\n/trabajador — cambiar entre cliente y trabajador\n/reiniciar — vaciar carrito y conversación\n' +
-  '/tareas — correr ya las tareas de cada 5 minutos\n/modo sombra|asistido|autonomo\n/ia on|off — IA local (Ollama)\n/ayuda — esto';
+  '/tareas — correr ya las tareas de cada 5 minutos\n/modo sombra|asistido|autonomo\n/ia on|off — IA local (Ollama)\n' +
+  '/pedidos — ver los pedidos de la hoja simulada\n/exportar — guardar la hoja en exports/*.csv\n/ayuda — esto';
 
 async function handleUpdate(u) {
   const q = u.callback_query;
@@ -240,6 +279,11 @@ async function handleUpdate(u) {
     env.gs.runEveryFiveMinutes();
     await deliver(before);
     return api('sendMessage', { chat_id: chat, text: 'Tareas de cada 5 minutos ejecutadas.' });
+  }
+  if (text === '/pedidos') return api('sendMessage', { chat_id: chat, text: ordersText(), parse_mode: 'HTML' });
+  if (text === '/exportar') {
+    const files = exportCsv();
+    return api('sendMessage', { chat_id: chat, text: '📁 Hoja exportada a CSV (ábrelos con Excel o Google Sheets):\n' + files.join('\n') });
   }
   if (text && text.startsWith('/modo ')) { setConfig('modo_bot', text.slice(6).trim()); return api('sendMessage', { chat_id: chat, text: 'modo_bot = ' + text.slice(6).trim() }); }
   if (text === '/ia off' || text === '/ia on') { setConfig('ia_activa', text === '/ia on' ? 'si' : 'no'); return api('sendMessage', { chat_id: chat, text: 'ia_activa = ' + (text === '/ia on' ? 'si' : 'no') }); }

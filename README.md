@@ -77,7 +77,7 @@ TELEGRAM_TOKEN=123:abc npm run telegram
 
 This runs the real `apps-script/` code against the in-memory Sheet (`.telegram-state.json`).
 - If Ollama is running with `qwen2.5:14b` (or `OLLAMA_MODEL`), AI is turned on automatically. Use `TELEGRAM_AI=off` to test rules only.
-- Chat commands: `/trabajador` (switch between worker and customer), `/reiniciar`, `/tareas` (run the 5-minute jobs now), `/modo sombra|asistido|autonomo`, `/ia on|off`.
+- Chat commands: `/trabajador` (switch between worker and customer), `/reiniciar`, `/tareas` (run the 5-minute jobs now), `/modo sombra|asistido|autonomo`, `/ia on|off`, **`/pedidos`** (see the orders) and **`/exportar`** (save every tab of the simulated Sheet as CSV in `exports/`, to open in Excel).
 - Voice notes are transcribed with `DEEPGRAM_API_KEY=...`. Photos, stickers, files and locations behave as they do on WhatsApp.
 
 ## Design

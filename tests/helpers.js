@@ -35,6 +35,7 @@ function setupBot(opts = {}) {
   env.props.set('WA_CATALOG_ID', 'CAT');
   setConfig(env, 'espera_rafaga_seg', 0);
   setConfig(env, 'mensajes_por_minuto', 0);
+  setConfig(env, 'sugerir', 'no');
   setConfig(env, 'horario', 'lun-dom 00:00-23:59');
   Object.entries(opts.config || {}).forEach(([k, v]) => setConfig(env, k, v));
   // Mensajes de estado del bot hacia los trabajadores quedan registrados como cualquier envío.
