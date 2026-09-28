@@ -19,13 +19,11 @@
   color: var(--muted);
 }
 .login-mark {
-  display: block;
   margin: 0 0 28px;
   padding-bottom: 20px;
   border-bottom: 1.5px solid var(--ink);
-  font-size: 4rem;
-  line-height: .9;
 }
+.login-mark .logo { height: auto; width: min(240px, 70%); }
 .login .form { margin-top: 0; }
 .pin-input {
   font: 700 2rem/1 var(--font-display) !important;

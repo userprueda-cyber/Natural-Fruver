@@ -88,3 +88,14 @@ test('icons reference the sprite and are hidden from screen readers', () => {
   assert.match(svg, /href="img\/icons\.svg#i-map-pin"/);
   assert.match(svg, /aria-hidden="true"/);
 });
+
+test('mid-word matches only show when nothing matches a whole word or prefix', () => {
+  const list = [
+    { id: 'pina', nombre: 'Piña', categoria: 'Frutas', palabras: '', disponible: true },
+    { id: 'leche', nombre: 'Leche Alpina entera', categoria: 'Lácteos', palabras: '', disponible: true },
+    { id: 'espinaca', nombre: 'Espinaca', categoria: 'Verduras', palabras: '', disponible: true }
+  ];
+  assert.deepEqual(ids(NF.search(list, 'piña')), ['pina']);
+  assert.deepEqual(ids(NF.search(list, 'alpina')), ['leche']);
+  assert.deepEqual(ids(NF.search(list, 'spinac')), ['espinaca']); // only a mid-word match exists
+});

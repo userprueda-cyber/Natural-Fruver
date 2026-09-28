@@ -117,4 +117,6 @@ El dueño lo cambia o pone `activo = no` en la pestaña *Trabajadores*.
 Después de 10 PIN incorrectos, la página de trabajadores se bloquea 10 minutos.
 
 **¿Dónde quedan las fotos?**
-En la carpeta *Natural Fruver - Fotos del catálogo* del Google Drive de la tienda.
+Las que suben los trabajadores quedan en la carpeta *Natural Fruver - Fotos del catálogo* del Google Drive de la tienda.
+Las fotos iniciales, recortadas del catálogo de Instagram, vienen con la página (`site/img/productos/`).
+Si la hoja se creó antes de tener esas fotos, usa el menú *Natural Fruver → Agregar fotos del catálogo*. Solo llena los productos que no tienen foto.

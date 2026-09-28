@@ -159,6 +159,12 @@ a { color: var(--green); text-underline-offset: 3px; }
   margin-top: 4px;
 }
 
+/* Logo real de la tienda (fondo crema): en modo oscuro queda como una etiqueta. */
+.brand-logo { flex-direction: row; align-items: center; gap: 12px; }
+.logo { display: block; width: auto; height: 64px; border-radius: var(--r); }
+.brand-text { display: flex; flex-direction: column; min-width: 0; }
+.brand-logo .brand-sub { margin-top: 0; }
+
 .icon-btn {
   display: inline-grid;
   place-items: center;
@@ -323,6 +329,11 @@ main { padding: 0 var(--gutter); max-width: var(--maxw); margin: 0 auto; }
   background: var(--surface);
 }
 .card-media img, .detail-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Las fotos de producto tienen fondo blanco: en modo claro se funden con la tarjeta. */
+@media (prefers-color-scheme: light) {
+  .card-media img, .detail-media img, .prow-main img, .photo img { mix-blend-mode: multiply; }
+}
+.detail-media { background: var(--surface); }
 
 /* Huacal de reemplazo cuando no hay foto: inicial + tono de la categoría. */
 .ph {

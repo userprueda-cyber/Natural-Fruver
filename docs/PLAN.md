@@ -3,7 +3,7 @@
 > **Status:** phases 1–5 are implemented (see README.md). A few things differ from the original plan:
 > - Workers log in with a **per-worker PIN** (tab `Trabajadores`) instead of Google accounts. It's simpler on shared phones, and changes are still attributed to a person.
 > - The worker page is a static `site/admin.html` calling the same Apps Script API, not an Apps Script-hosted page.
-> - Real product data is still pending: Instagram was not reachable from the build environment.
+> - Product data comes from the store's Instagram catálogo post (July 31, 2026) plus the Zenú and Chalupo posts. It has 123 products in 6 categories, along with the WhatsApp number, address and hours. The catálogo has no prices, so the seed prices in `Setup.gs` are only references for the owner to replace.
 
 ## Context
 A friend runs **Natural Fruver Pereira**, a fruit & vegetable store that currently sells through Instagram posts and WhatsApp. We're building them a catalog that:
