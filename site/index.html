@@ -3,103 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Natural Fruver Pereira — Catálogo</title>
-  <meta name="description" content="Frutas, verduras y más en Pereira. Mira precios, arma tu pedido y envíalo por WhatsApp.">
-  <meta name="theme-color" content="#F4EEE1" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121714" media="(prefers-color-scheme: dark)">
-  <meta property="og:title" content="Natural Fruver Pereira — Catálogo">
-  <meta property="og:description" content="Frutas y verduras frescas. Arma tu pedido y envíalo por WhatsApp.">
+  <title>Natural Fruver Pereira — Pide por WhatsApp</title>
+  <meta name="description" content="Frutas, verduras y más en Pereira. Haz tu pedido por WhatsApp.">
+  <meta name="theme-color" content="#1f7a3a">
+  <meta property="og:title" content="Natural Fruver Pereira — Pide por WhatsApp">
+  <meta property="og:description" content="Frutas y verduras frescas. Mira el catálogo y pide por WhatsApp.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="img/og.jpg">
+  <meta property="og:image" content="https://userprueda-cyber.github.io/Natural-Fruver/img/og.jpg">
   <link rel="icon" href="img/icon.png" type="image/png">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="preload" href="fonts/barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/app.css">
+  <!-- La tienda atiende solo por WhatsApp: esta página lleva directo al chat. -->
+  <meta http-equiv="refresh" content="1;url=https://wa.me/573135962382?text=Hola">
+  <style>
+    :root { --bg: #efe2d1; --ink: #1d4d32; --btn: #1f7a3a; --btn-ink: #fff; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #14201a; --ink: #e8efe9; --btn: #25a244; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+      background: var(--bg); color: var(--ink); font: 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; text-align: center; }
+    img { width: 220px; max-width: 70vw; height: auto; border-radius: 18px; }
+    h1 { font-size: 1.4rem; margin: 20px 0 6px; }
+    p { margin: 0 0 24px; opacity: .85; }
+    a.btn { display: inline-block; padding: 14px 26px; border-radius: 999px; background: var(--btn); color: var(--btn-ink);
+      font-weight: 700; text-decoration: none; }
+  </style>
 </head>
 <body>
-  <header class="top">
-    <div class="top-row">
-      <a class="brand brand-logo" href="./">
-        <img class="logo" src="img/logo.png" alt="" width="465" height="320">
-        <span class="brand-text">
-          <span class="sr-only" id="store-name">Natural Fruver</span>
-          <span class="brand-sub">Pereira · frutas y verduras</span>
-        </span>
-      </a>
-      <a id="ig-link" class="icon-btn" href="https://www.instagram.com/naturalfruverpereira/" target="_blank" rel="noopener" aria-label="Instagram de la tienda">
-        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-instagram-logo"></use></svg>
-      </a>
-    </div>
-    <p id="open-state" class="open-state" hidden></p>
-  </header>
-  <div class="top-sticky">
-    <label class="search">
-      <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-magnifying-glass"></use></svg>
-      <span class="sr-only">Buscar productos</span>
-      <input id="q" type="search" placeholder="Buscar en el mercado…" autocomplete="off" enterkeyhint="search">
-    </label>
-    <nav id="chips" class="tabs-cat" aria-label="Categorías"></nav>
-  </div>
-
-  <p id="demo-note" class="notice" hidden>Modo demostración — productos y precios de ejemplo. Los pedidos no se guardan.</p>
-  <p id="banner" class="banner" hidden></p>
-
-  <main id="main" aria-live="polite">
-    <div class="skeleton-grid" aria-hidden="true">
-      <div></div><div></div><div></div><div></div><div></div><div></div>
-    </div>
+  <main>
+    <img src="img/logo.png" alt="Natural Fruver" width="465" height="320">
+    <h1>Pide por WhatsApp</h1>
+    <p>Mira el catálogo, arma tu carrito y te lo llevamos.</p>
+    <a class="btn" href="https://wa.me/573135962382?text=Hola">Abrir WhatsApp</a>
   </main>
-
-  <footer class="foot" id="foot"></footer>
-
-  <button id="cart-button" class="cart-bar" type="button" hidden>
-    <span class="cart-bar-count" id="cart-count">0</span>
-    <span class="cart-bar-label">Ver pedido</span>
-    <strong id="cart-total" class="cart-bar-total">$0</strong>
-  </button>
-
-  <!-- Detalle de producto -->
-  <dialog id="product-dialog" class="sheet" aria-label="Detalle del producto">
-    <div id="product-body"></div>
-  </dialog>
-
-  <!-- Carrito y datos de entrega -->
-  <dialog id="cart-dialog" class="sheet" aria-labelledby="cart-title">
-    <div class="sheet-head" tabindex="-1" autofocus>
-      <h2 id="cart-title">Tu pedido</h2>
-      <button type="button" class="icon-btn" data-close aria-label="Cerrar">
-        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-x"></use></svg>
-      </button>
-    </div>
-    <div id="cart-body"></div>
-  </dialog>
-
-  <template id="checkout-template">
-    <form id="checkout" class="form" novalidate>
-      <h3 class="rule-title">Datos de entrega</h3>
-      <div class="seg" role="radiogroup" aria-label="Tipo de entrega">
-        <label><input type="radio" name="entrega" value="domicilio" checked>
-          <span><svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-moped"></use></svg> Domicilio</span></label>
-        <label><input type="radio" name="entrega" value="recoger">
-          <span><svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-storefront"></use></svg> Recoger</span></label>
-      </div>
-      <label>Nombre <input name="nombre" autocomplete="name" required maxlength="80"></label>
-      <label>Teléfono / WhatsApp <input name="telefono" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20"></label>
-      <label data-for="domicilio">Dirección y barrio <input name="direccion" autocomplete="street-address" maxlength="200" placeholder="Cra 7 # 20-30, Centro"></label>
-      <label>Notas <span class="opt">(opcional)</span> <textarea name="notas" rows="2" maxlength="300" placeholder="Aguacates para hoy, maduros"></textarea></label>
-      <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <p class="form-error" id="checkout-error" role="alert" hidden></p>
-      <button class="btn primary big" type="submit" id="send-order">
-        <svg class="ic" aria-hidden="true"><use href="img/icons.svg#i-whatsapp-logo"></use></svg>
-        Enviar pedido por WhatsApp
-      </button>
-      <p class="fine">Separamos tus productos y abrimos WhatsApp con el pedido listo. Te confirmamos por ahí.</p>
-    </form>
-  </template>
-
-  <script src="js/config.js"></script>
-  <script src="js/shared.js"></script>
-  <script src="js/app.js"></script>
 </body>
 </html>

@@ -9,13 +9,14 @@ var SHEETS = {
   CATEGORIES: 'Categorias',
   ORDERS: 'Pedidos',
   CONFIG: 'Config',
-  WORKERS: 'Trabajadores'
+  WORKERS: 'Trabajadores',
+  CLIENTS: 'Clientes'
 };
 
 var PRODUCT_HEADERS = [
   'id', 'nombre', 'categoria', 'precio', 'unidad', 'precio_oferta', 'oferta_hasta',
   'stock', 'disponible', 'destacado', 'foto_url', 'descripcion', 'palabras_clave',
-  'orden', 'archivado', 'actualizado', 'actualizado_por'
+  'orden', 'archivado', 'actualizado', 'actualizado_por', 'en_whatsapp'
 ];
 var CATEGORY_HEADERS = ['nombre', 'icono', 'orden'];
 var ORDER_HEADERS = [
@@ -23,10 +24,12 @@ var ORDER_HEADERS = [
   'items', 'subtotal', 'domicilio', 'total', 'actualizado', 'actualizado_por'
 ];
 var CONFIG_HEADERS = ['clave', 'valor', 'nota'];
+var WORKER_HEADERS = ['nombre', 'pin', 'activo', 'whatsapp'];
+// Clientes del bot de WhatsApp: datos guardados y en qué paso de la conversación van.
+var CLIENT_HEADERS = ['telefono', 'nombre', 'direccion', 'paso', 'datos', 'actualizado'];
 
 // Carpeta de las fotos que vienen con la página (relativa a site/).
 var PHOTO_DIR = 'img/productos/';
-var WORKER_HEADERS = ['nombre', 'pin', 'activo'];
 
 var ORDER_STATES = ['pendiente', 'confirmado', 'entregado', 'cancelado'];
 var FINAL_STATES = ['entregado', 'cancelado'];
@@ -137,6 +140,30 @@ function roundQty_(qty, unidad) {
   var q = num_(qty, 0);
   if (isDecimalUnit_(unidad)) return Math.round(q * 2) / 2;
   return Math.round(q);
+}
+
+/** Texto sin tildes, en minúsculas y con espacios simples (para buscar). */
+function normalize_(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** $ 12.500 */
+function money_(n) {
+  var s = String(Math.round(num_(n, 0)));
+  return '$' + s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/** 2.5 → "2,5" */
+function qtyStr_(q) {
+  return String(Math.round(num_(q, 0) * 100) / 100).replace('.', ',');
+}
+
+var UNIT_LABELS = { unidad: 'und', kg: 'kg', lb: 'lb', atado: 'atado', canasta: 'canasta', paquete: 'paq', bandeja: 'bandeja' };
+function unitLabel_(u) {
+  u = String(u || 'unidad').toLowerCase();
+  return UNIT_LABELS[u] || u;
 }
 
 function slug_(s) {

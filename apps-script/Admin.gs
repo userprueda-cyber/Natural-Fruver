@@ -113,6 +113,7 @@ function saveProduct_(input, who) {
     writeRow_(t, row);
     SpreadsheetApp.flush();
     invalidateCatalog_();
+    syncCatalogQuietly_([row.id]);
     return { ok: true, id: row.id };
   } finally {
     lock.releaseLock();
@@ -186,6 +187,7 @@ function patchProduct_(id, patch, who) {
     writeRow_(t, row);
     SpreadsheetApp.flush();
     invalidateCatalog_();
+    syncCatalogQuietly_([String(id)]);
     return { ok: true, id: id };
   } finally {
     lock.releaseLock();

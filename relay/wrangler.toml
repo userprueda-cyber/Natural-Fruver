@@ -1,0 +1,5 @@
+name = "natural-fruver-whatsapp"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Secretos (no van aquí): npx wrangler secret put VERIFY_TOKEN / APP_SECRET / APPS_SCRIPT_URL / RELAY_SECRET

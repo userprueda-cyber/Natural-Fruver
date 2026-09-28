@@ -4,6 +4,7 @@
  *   GET  ?action=catalogo            → catálogo público
  *   POST {action:'pedido', ...}      → registra un pedido y descuenta inventario
  *   POST {action:'admin_*', pin, ...} → acciones de trabajadores
+ *   POST {action:'wa_webhook', secret, payload} → mensajes de WhatsApp (desde relay/)
  *
  * La página envía los POST como text/plain para evitar el "preflight" de CORS,
  * que Apps Script no soporta.
@@ -30,6 +31,7 @@ function doPost(e) {
 
 function handlePost_(body) {
   var action = String(body.action || '');
+  if (action === 'wa_webhook') return handleWebhook_(body);
   if (action === 'pedido') return createOrder_(body);
 
   if (action.indexOf('admin_') !== 0) throw userError_('accion', 'Acción desconocida.');

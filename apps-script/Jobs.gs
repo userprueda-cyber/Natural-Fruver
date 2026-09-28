@@ -8,6 +8,7 @@ function onOpen() {
     .addItem('1. Configurar hojas (primera vez)', 'setup')
     .addItem('2. Activar tareas automáticas', 'installTriggers')
     .addSeparator()
+    .addItem('Sincronizar catálogo de WhatsApp', 'syncWhatsAppCatalog')
     .addItem('Actualizar catálogo ahora', 'refreshCatalogNow')
     .addItem('Agregar fotos del catálogo', 'addCatalogPhotos')
     .addItem('Cancelar pedidos pendientes vencidos', 'cancelStalePendingOrders')
@@ -25,14 +26,15 @@ function refreshCatalogNow() {
   getCatalogCached_();
 }
 
-/** Crea los activadores: cada hora (pedidos vencidos) y cada mañana (resumen). */
+/** Crea los activadores: cada hora (pedidos vencidos y catálogo de WhatsApp) y cada mañana (resumen). */
 function installTriggers() {
-  var handlers = ['cancelStalePendingOrders', 'sendDailySummary', 'refreshCatalogNow'];
+  var handlers = ['cancelStalePendingOrders', 'sendDailySummary', 'refreshCatalogNow', 'syncWhatsAppCatalog'];
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (handlers.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('refreshCatalogNow').timeBased().everyMinutes(15).create();
   ScriptApp.newTrigger('cancelStalePendingOrders').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('syncWhatsAppCatalog').timeBased().everyHours(1).create();
   ScriptApp.newTrigger('sendDailySummary').timeBased().atHour(6).everyDays(1).create();
   try {
     SpreadsheetApp.getUi().alert('Listo: tareas automáticas activadas.');

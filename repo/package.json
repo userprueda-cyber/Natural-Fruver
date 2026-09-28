@@ -1,0 +1,10 @@
+{
+  "name": "natural-fruver",
+  "private": true,
+  "description": "Catálogo en línea de Natural Fruver Pereira (Google Sheets + Apps Script + GitHub Pages)",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "demo": "node scripts/build-demo.js",
+    "serve": "npx --yes serve site -l 5173"
+  }
+}

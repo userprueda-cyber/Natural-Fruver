@@ -1,11 +1,66 @@
 /**
- * Pedidos: la página registra el pedido ANTES de abrir WhatsApp.
- * Así el inventario baja en el momento del pedido, y si el pedido se cancela
+ * Pedidos: llegan del bot de WhatsApp (Bot.gs) cuando el cliente confirma.
+ * El inventario baja en el momento del pedido, y si el pedido se cancela
  * (a mano o automáticamente por no confirmarse) el inventario se devuelve.
  */
 
 var MAX_ITEMS = 60;
 var MAX_QTY = 50;
+
+/**
+ * Calcula las líneas de un pedido con los precios e inventario de la hoja
+ * (nunca con precios que mande el cliente). No escribe nada.
+ */
+function priceItems_(items, t) {
+  var today = todayStr_();
+  t = t || table_(SHEETS.PRODUCTS);
+  var byId = {};
+  t.rows.forEach(function (p) { if (!isBlank_(p.id)) byId[String(p.id).trim()] = p; });
+
+  // Sumar cantidades repetidas del mismo producto.
+  var wanted = {};
+  var orderIds = [];
+  (items || []).forEach(function (it) {
+    var id = clip_(it && it.id, 60);
+    if (!id) return;
+    if (!(id in wanted)) { wanted[id] = 0; orderIds.push(id); }
+    wanted[id] += num_(it.cantidad, 0);
+  });
+
+  var lines = [];
+  var problems = [];
+  orderIds.forEach(function (id) {
+    var p = byId[id];
+    if (!p || truthy_(p.archivado)) {
+      problems.push({ id: id, nombre: p ? String(p.nombre) : id, motivo: 'no_existe' });
+      return;
+    }
+    var pub = publicProduct_(p, today);
+    var qty = roundQty_(wanted[id], pub.unidad);
+    if (qty <= 0) return;
+    if (qty > MAX_QTY) qty = MAX_QTY;
+    if (!pub.disponible) {
+      problems.push({ id: id, nombre: pub.nombre, motivo: 'agotado', disponible: 0 });
+      return;
+    }
+    if (pub.stock !== null && pub.stock < qty) {
+      problems.push({ id: id, nombre: pub.nombre, motivo: 'stock', disponible: pub.stock });
+      return;
+    }
+    var price = effectivePrice_(p, today);
+    lines.push({
+      id: id,
+      nombre: pub.nombre,
+      unidad: pub.unidad,
+      cantidad: qty,
+      precio: price,
+      total: Math.round(price * qty),
+      stock_controlado: pub.stock !== null,
+      _p: p
+    });
+  });
+  return { lines: lines, problems: problems };
+}
 
 function createOrder_(body) {
   if (!isBlank_(body.website)) throw userError_('spam', 'Pedido rechazado.'); // campo trampa para bots
@@ -32,53 +87,10 @@ function createOrder_(body) {
   lock.waitLock(20000);
   try {
     var cfg = getConfig_();
-    var today = todayStr_();
     var t = table_(SHEETS.PRODUCTS);
-    var byId = {};
-    t.rows.forEach(function (p) { if (!isBlank_(p.id)) byId[String(p.id).trim()] = p; });
-
-    // Sumar cantidades repetidas del mismo producto.
-    var wanted = {};
-    var orderIds = [];
-    items.forEach(function (it) {
-      var id = clip_(it && it.id, 60);
-      if (!id) return;
-      if (!(id in wanted)) { wanted[id] = 0; orderIds.push(id); }
-      wanted[id] += num_(it.cantidad, 0);
-    });
-
-    var lines = [];
-    var problems = [];
-    orderIds.forEach(function (id) {
-      var p = byId[id];
-      if (!p || truthy_(p.archivado)) {
-        problems.push({ id: id, nombre: p ? String(p.nombre) : id, motivo: 'no_existe' });
-        return;
-      }
-      var pub = publicProduct_(p, today);
-      var qty = roundQty_(wanted[id], pub.unidad);
-      if (qty <= 0) return;
-      if (qty > MAX_QTY) qty = MAX_QTY;
-      if (!pub.disponible) {
-        problems.push({ id: id, nombre: pub.nombre, motivo: 'agotado', disponible: 0 });
-        return;
-      }
-      if (pub.stock !== null && pub.stock < qty) {
-        problems.push({ id: id, nombre: pub.nombre, motivo: 'stock', disponible: pub.stock });
-        return;
-      }
-      var price = effectivePrice_(p, today);
-      lines.push({
-        id: id,
-        nombre: pub.nombre,
-        unidad: pub.unidad,
-        cantidad: qty,
-        precio: price,
-        total: Math.round(price * qty),
-        stock_controlado: pub.stock !== null,
-        _p: p
-      });
-    });
+    var priced = priceItems_(items, t);
+    var lines = priced.lines;
+    var problems = priced.problems;
 
     if (problems.length) {
       throw userError_('sin_stock', 'Algunos productos ya no están disponibles en esa cantidad.', { problemas: problems });
@@ -118,10 +130,11 @@ function createOrder_(body) {
       domicilio: delivery,
       total: subtotal + delivery,
       actualizado: new Date(),
-      actualizado_por: 'web'
+      actualizado_por: body.origen === 'whatsapp' ? 'whatsapp' : 'web'
     });
     SpreadsheetApp.flush();
     invalidateCatalog_();
+    syncCatalogQuietly_(lines.filter(function (l) { return l.stock_controlado; }).map(function (l) { return l.id; }));
 
     return {
       ok: true,
@@ -176,13 +189,15 @@ function setOrderStatus_(nro, estado, who) {
     }
     if (estado === 'pendiente') throw userError_('datos', 'Un pedido no puede volver a pendiente.');
 
-    if (estado === 'cancelado') restock_(order);
+    var restocked = estado === 'cancelado' ? restock_(order) : [];
 
     setCell_(ordersT, order, 'estado', estado);
     setCell_(ordersT, order, 'actualizado', new Date());
     setCell_(ordersT, order, 'actualizado_por', who || '');
     SpreadsheetApp.flush();
     invalidateCatalog_();
+    if (restocked.length) syncCatalogQuietly_(restocked);
+    notifyCustomerStatus_(order, estado);
     return { ok: true, nro: nro, estado: estado };
   } finally {
     lock.releaseLock();
@@ -195,10 +210,13 @@ function restock_(order) {
   var t = table_(SHEETS.PRODUCTS);
   var byId = {};
   t.rows.forEach(function (p) { byId[String(p.id).trim()] = p; });
+  var ids = [];
   lines.forEach(function (l) {
     if (!l.stock_controlado) return;
     var p = byId[l.id];
     if (!p || isBlank_(p.stock)) return; // el trabajador dejó de controlar stock: nada que devolver
     setCell_(t, p, 'stock', Math.round((num_(p.stock, 0) + num_(l.cantidad, 0)) * 100) / 100);
+    ids.push(l.id);
   });
+  return ids;
 }

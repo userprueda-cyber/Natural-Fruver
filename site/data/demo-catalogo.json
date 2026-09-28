@@ -12,7 +12,9 @@
     "pedido_minimo": 0,
     "zonas_domicilio": "Pereira. Programa tu domicilio con 1 día de antelación",
     "banner": "¡Abrimos sábados y domingos de 8:30 a. m. a 4:00 p. m.!",
-    "ocultar_agotados": "no"
+    "ocultar_agotados": "no",
+    "url_fotos": "https://userprueda-cyber.github.io/Natural-Fruver/",
+    "plantilla_aviso_pedido": ""
   },
   "categorias": [
     {
