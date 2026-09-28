@@ -138,7 +138,9 @@ function cleanField_(f, v) {
       return clip_(v, 20).toLowerCase() || 'unidad';
     case 'foto_url':
       var url = clip_(v, 500);
-      return /^https:\/\//.test(url) ? url : '';
+      // Enlaces https (fotos subidas a Drive) o las fotos que vienen con la página.
+      if (/^https:\/\//.test(url)) return url;
+      return /^img\/productos\/[a-z0-9-]+\.(jpg|jpeg|png|webp)$/.test(url) ? url : '';
     case 'descripcion':
       return clip_(v, 400);
     case 'palabras_clave':

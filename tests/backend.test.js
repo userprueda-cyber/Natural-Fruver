@@ -2,9 +2,24 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createEnv } = require('./gas-mock');
 
+// Fixed prices, stock and an offer, so the tests don't depend on the seed prices in Setup.gs.
+const FIXTURE = {
+  'mango-tommy': { precio: 6000, precio_oferta: 5000, stock: 20 },
+  'aguacate-papelillo': { precio: 2500, stock: 40 },
+  'fresa': { stock: 10 },
+  'banano': { precio: 3000, stock: '' },
+  'huevos-aa-x-30': { precio: 18000 }
+};
+
 function setupEnv() {
   const env = createEnv();
   env.gs.setup();
+  const t = env.gs.table_('Productos');
+  Object.keys(FIXTURE).forEach((id) => {
+    const row = t.rows.find((p) => p.id === id);
+    Object.keys(FIXTURE[id]).forEach((col) => env.gs.setCell_(t, row, col, FIXTURE[id][col]));
+  });
+  env.gs.invalidateCatalog_();
   return env;
 }
 
@@ -67,14 +82,14 @@ test('an order decrements stock, uses server prices and gets a number', () => {
     cliente: customer,
     items: [
       { id: 'mango-tommy', cantidad: 2.5 },
-      { id: 'aguacate-hass', cantidad: 3, precio: 1 }, // client price is ignored
+      { id: 'aguacate-papelillo', cantidad: 3, precio: 1 }, // client price is ignored
       { id: 'banano', cantidad: 1.2 } // rounded to 1 kg; stock not tracked
     ]
   });
   assert.equal(res.ok, true, JSON.stringify(res));
   assert.equal(res.nro, 'NF-0001');
   assert.equal(product(env, 'mango-tommy').stock, 17.5);
-  assert.equal(product(env, 'aguacate-hass').stock, 37);
+  assert.equal(product(env, 'aguacate-papelillo').stock, 37);
   assert.equal(product(env, 'banano').stock, '');
   const expected = 2.5 * 5000 + 3 * 2500 + 1 * 3000;
   assert.equal(res.subtotal, expected);
@@ -155,14 +170,14 @@ test('cancelling an order restocks; delivered orders are final', () => {
 
 test('stale pending orders are auto-cancelled and restocked', () => {
   const env = setupEnv();
-  const order = post(env, { action: 'pedido', cliente: customer, items: [{ id: 'aguacate-hass', cantidad: 5 }] });
+  const order = post(env, { action: 'pedido', cliente: customer, items: [{ id: 'aguacate-papelillo', cantidad: 5 }] });
   assert.equal(env.gs.cancelStalePendingOrders(), 0); // just created
   const t = env.gs.table_('Pedidos');
   env.gs.setCell_(t, t.rows[0], 'fecha', new Date(Date.now() - 4 * 3600 * 1000));
   assert.equal(env.gs.cancelStalePendingOrders(), 1);
   assert.equal(env.gs.table_('Pedidos').rows[0].estado, 'cancelado');
   assert.equal(env.gs.table_('Pedidos').rows[0].nro, order.nro);
-  assert.equal(product(env, 'aguacate-hass').stock, 40);
+  assert.equal(product(env, 'aguacate-papelillo').stock, 40);
 });
 
 test('admin actions require a valid PIN and lock out after repeated failures', () => {
@@ -242,4 +257,41 @@ test('number parsing understands Colombian formats', () => {
   assert.equal(gs.num_('2.5', 0), 2.5);
   assert.equal(gs.num_('1.250,50', 0), 1250.5);
   assert.equal(gs.num_('', 7), 7);
+});
+
+test('seeded products point at photo files that exist in site/', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const env = setupEnv();
+  const rows = env.gs.table_('Productos').rows;
+  const withPhoto = rows.filter((p) => p.foto_url);
+  assert.ok(withPhoto.length > 100);
+  withPhoto.forEach((p) => {
+    assert.equal(p.foto_url, 'img/productos/' + p.id + '.jpg');
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'site', p.foto_url)), 'falta ' + p.foto_url);
+  });
+});
+
+test('saving a product keeps its bundled photo but rejects other relative paths', () => {
+  const env = setupEnv();
+  const p = pin(env);
+  const keep = post(env, { action: 'admin_guardar', pin: p, producto: { id: 'banano', precio: 3200, foto_url: 'img/productos/banano.jpg' } });
+  assert.equal(keep.ok, true, JSON.stringify(keep));
+  assert.equal(product(env, 'banano').foto_url, 'img/productos/banano.jpg');
+  post(env, { action: 'admin_guardar', pin: p, producto: { id: 'banano', foto_url: '../admin.html' } });
+  assert.equal(product(env, 'banano').foto_url, '');
+});
+
+test('addCatalogPhotos fills only missing photos', () => {
+  const env = setupEnv();
+  const t = env.gs.table_('Productos');
+  env.gs.setCell_(t, t.rows.find((p) => p.id === 'banano'), 'foto_url', '');
+  env.gs.setCell_(t, t.rows.find((p) => p.id === 'fresa'), 'foto_url', 'https://drive.google.com/x');
+  const log = console.log;
+  console.log = () => {};
+  const count = env.gs.addCatalogPhotos();
+  console.log = log;
+  assert.equal(count, 1);
+  assert.equal(product(env, 'banano').foto_url, 'img/productos/banano.jpg');
+  assert.equal(product(env, 'fresa').foto_url, 'https://drive.google.com/x');
 });
