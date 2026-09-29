@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo del asistente — Natural Fruver</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/demo.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Natural Fruver · asistente de WhatsApp</h1>
+    <p class="lede">Demo en vivo. Escribe como escribiría un cliente (con errores, abreviaturas…) y mira cómo le llega el pedido al dueño.
+      Corre el mismo código del bot, dentro de tu navegador.</p>
+  </div>
+  <button id="reset" type="button" class="ghost">Reiniciar demo</button>
+</header>
+
+<section class="tips" aria-label="Cosas para probar">
+  <span class="tips-label">Prueba con:</span>
+  <div id="chips"></div>
+</section>
+
+<main class="stage">
+  <section class="phone" id="phone-customer" aria-label="Teléfono del cliente">
+    <div class="bar"><span class="avatar">🍓</span><div><strong>Natural Fruver</strong><small>asistente automático</small></div><em>Cliente</em></div>
+    <div class="chat" id="chat-customer" aria-live="polite"></div>
+    <form class="composer" id="form-customer" autocomplete="off">
+      <button type="button" class="tool" data-tool="location" title="Enviar ubicación">📍</button>
+      <button type="button" class="tool" data-tool="image" title="Enviar foto">📷</button>
+      <input id="input-customer" type="text" placeholder="Escribe un mensaje" aria-label="Mensaje del cliente" maxlength="600">
+      <button type="submit" class="send" aria-label="Enviar">➤</button>
+    </form>
+  </section>
+
+  <section class="phone owner" id="phone-worker" aria-label="Teléfono del dueño">
+    <div class="bar"><span class="avatar">🧑‍🌾</span><div><strong>Natural Fruver</strong><small>chat del dueño</small></div><em>Dueño</em></div>
+    <div class="chat" id="chat-worker" aria-live="polite"></div>
+    <form class="composer" id="form-worker" autocomplete="off">
+      <input id="input-worker" type="text" placeholder="Comando (ej: pedidos, hoy, ayuda)" aria-label="Comando del dueño" maxlength="200">
+      <button type="submit" class="send" aria-label="Enviar">➤</button>
+    </form>
+  </section>
+</main>
+
+<section class="sheet" aria-label="Hoja de Google">
+  <h2>Hoja de Google · pestaña «Pedidos» <small id="sheet-count"></small></h2>
+  <div class="table-wrap"><table id="orders"><thead><tr><th>Pedido</th><th>Estado</th><th>Cliente</th><th>Entrega</th><th>Pago</th><th>Total</th></tr></thead><tbody></tbody></table></div>
+  <p class="fine">Así se ve la hoja del dueño: cada pedido queda aquí y él puede editarla a mano.</p>
+</section>
+
+<footer class="notes">
+  <p><strong>Es una demo:</strong> los precios son de ejemplo, la IA está apagada (las reglas entienden casi todo), no se conecta a WhatsApp real ni guarda nada fuera de esta página.
+  En la versión real el dueño usa su propio WhatsApp y su hoja de Google.</p>
+</footer>
+
+<script src="js/demo-env.js"></script>
+<script src="js/demo-gs.js"></script>
+<script src="js/demo.js"></script>
+</body>
+</html>

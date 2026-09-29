@@ -68,6 +68,13 @@ Customers of **Natural Fruver Pereira** order entirely inside WhatsApp: they bro
 | `docs/` | Phase 0 docs (PLATFORM_FACTS, GAP_ANALYSIS, COST_MODEL, THREAT_MODEL, DATA_MODEL, FLOWS, OWNER_QUESTIONS), RUNBOOK, ROLLOUT, MANUAL_DUENO (Spanish), setup guides |
 | `DECISIONS.md` | Why things are the way they are |
 
+## Web demo (no server, works on any phone)
+
+`site/demo.html` runs the **real bot code** inside the browser, with a simulated Sheet: a customer phone and an owner phone side by side, plus the live *Pedidos* tab. It's a static page, so GitHub Pages hosts it: once this branch is on `main`, it's at `https://userprueda-cyber.github.io/Natural-Fruver/demo.html`.
+- Locally: `npm run serve`, then open `/demo.html`.
+- **After changing any `apps-script/*.gs`, run `npm run web-demo`.** It repackages the bot into `site/js/demo-gs.js`, and a test fails if that file is out of date.
+- The demo turns AI off, uses the example prices, and connects to nothing real.
+
 ## Testing the bot on Telegram
 
 ```bash
