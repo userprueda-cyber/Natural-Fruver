@@ -19,6 +19,7 @@ FF = os.environ.get("FFMPEG", "ffmpeg")
 UP = "/root/.claude/uploads/667eecf4-e906-536b-8c62-5d58178423a8"
 SRC_V = os.environ.get("SRC_VIDEO", f"{UP}/d7d96556-VIDEO-2026-09-29-12-06-47.mp4")
 SRC_A = os.environ.get("SRC_GORDON", f"{UP}/4fe1c122-AUDIO-2026-09-29-11-36-44.m4a")  # Ms. Gordon
+SRC_B = os.environ.get("SRC_CAMILO", f"{UP}/9ee86347-AUDIO-2026-09-29-12-03-50.m4a")  # Camilo Gonzalez
 PREVIEW = "--preview" in sys.argv
 W, H, FPS = 1280, 720, 30
 CRF = "26" if PREVIEW else "18"
@@ -104,12 +105,13 @@ def title_layer(kind):
         d.text((W / 2, 440), "Including the Audience", font=ImageFont.truetype(F_IT, 46), fill=GOLD, anchor="mm")
         spaced(d, (W / 2, 610), "PABLO  &  EMILIANO", ImageFont.truetype(F_REG, 24), IVORY, 8)
     else:
-        spaced(d, (W / 2, 170), "THE  THIRD  ACTOR", ImageFont.truetype(F_REG, 26), GOLD, 9)
-        d.text((W / 2, 290), "Thank you,", font=ImageFont.truetype(F_IT, 58), fill=IVORY, anchor="mm")
-        d.text((W / 2, 372), "Ms. Gordon", font=ImageFont.truetype(F_BOLD, 96), fill=IVORY, anchor="mm")
-        divider(d, 448)
-        spaced(d, (W / 2, 520), "A DOCUMENTARY BY", ImageFont.truetype(F_REG, 22), GOLD, 8)
-        d.text((W / 2, 574), "Pablo & Emiliano", font=ImageFont.truetype(F_BOLD, 44), fill=IVORY, anchor="mm")
+        spaced(d, (W / 2, 140), "THE  THIRD  ACTOR", ImageFont.truetype(F_REG, 26), GOLD, 9)
+        d.text((W / 2, 250), "Thank you,", font=ImageFont.truetype(F_IT, 54), fill=IVORY, anchor="mm")
+        d.text((W / 2, 330), "Ms. Gordon", font=ImageFont.truetype(F_BOLD, 88), fill=IVORY, anchor="mm")
+        d.text((W / 2, 410), "and Camilo Gonzalez", font=ImageFont.truetype(F_BOLDIT, 50), fill=IVORY, anchor="mm")
+        divider(d, 468)
+        spaced(d, (W / 2, 535), "A DOCUMENTARY BY", ImageFont.truetype(F_REG, 22), GOLD, 8)
+        d.text((W / 2, 585), "Pablo & Emiliano", font=ImageFont.truetype(F_BOLD, 44), fill=IVORY, anchor="mm")
     sh_ = img.filter(ImageFilter.GaussianBlur(6)); a = np.array(sh_)[..., 3] * .7
     out = Image.new("RGBA", (W, H), (0, 0, 0, 0)); out.paste(Image.new("RGBA", (W, H), (0, 0, 0, 255)), mask=Image.fromarray(a.astype(np.uint8)))
     out.alpha_composite(img); return out
@@ -379,6 +381,34 @@ def main():
         step_tag(a, t(t0), t1 - t0, n, lab)
     a.write(os.path.join(EDIT, "s8.ass"))
     add("08_solutions", dur, scene("08_solutions", dur, (SRC_V, s0), (SRC_V, s0), os.path.join(EDIT, "s8.ass"), frame, True, gv))
+
+    # S8b second interview: Camilo Gonzalez (audio B), cut = intro 0-5 s + answers 22-133.7 s
+    segs = [(0.0, 5.0), (22.0, 133.7)]; dur = sum(b - a_ for a_, b in segs)
+    pre = os.path.join(EDIT, "s8b_voice.wav")
+    parts = "".join(f"[0:a]atrim={a_}:{b}, asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.03,afade=t=out:st={b - a_ - .03:.3f}:d=0.03[c{i}];".replace(" ", "") for i, (a_, b) in enumerate(segs))
+    sh([FF, "-y", "-loglevel", "error", "-i", SRC_B, "-filter_complex", parts + "[c0][c1]concat=n=2:v=0:a=1[o]", "-map", "[o]", pre])
+    gb = TARGET - loud(pre, 0, dur)
+    def cm(t): return t if t < 5.0 else t - 22.0 + 5.0        # source time -> clip time
+    a = Ass(0.0); C = lambda t0, t1, txt, ask=False: a.cap(cm(t0), cm(t1), txt, ask)
+    C(0.1, 4.7, "Hi everybody, today we're going to interview teacher Camilo Gonzalez.")
+    C(22.2, 23.9, "Why did you choose to watch it?", True); C(24.1, 25.0, "I've seen it before,"); C(25.5, 27.5, "and the group is also…"); C(27.9, 29.0, "yeah, I'm familiar with it.")
+    C(30.0, 35.5, "Both are incredible, the group is amazing and the play is also pretty good."); C(35.9, 39.3, "What do you expect from watching it?", True)
+    C(41.7, 43.0, "I expected the same."); C(43.3, 45.3, "The same play I've watched at least"); C(46.1, 47.4, "three times before.")
+    C(47.9, 57.1, "However, every time there is something different, something new. So I was expecting the same, but at the same time I was expecting something that I would try and identify,")
+    C(57.2, 59.8, "like the change, like something new."); C(59.8, 63.2, "What made you feel engaged in the performance?", True)
+    C(63.4, 70.5, "The music, all the music of the play, they play themselves with their own instruments. It's amazing. And the puppets, really good puppets.")
+    C(71.0, 72.7, "What made you lose interest?", True); C(74.7, 82.4, "Nothing, honestly. I mean, the play is really good at keeping you engaged with the music, the songs, the puppets, the dynamics.")
+    C(83.3, 88.5, "How do you feel about participating in a performance if you were just attending as an audience?", True); C(88.5, 92.1, "I actually participated once. I was part of the production team")
+    C(92.5, 94.2, "for a play by a Chinese guy."); C(94.4, 96.2, "It was about the Tiananmen Square massacre."); C(96.9, 100.2, "and I was in charge of the soundboard and the subtitles.")
+    C(102.4, 106.8, "Can a performance change the way people think or behave?", True); C(107.5, 110.2, "I once watched a play, it was called"); C(110.4, 113.4, "…")
+    C(113.4, 119.6, "It was really good. And at the end of the play, I was essentially crying, and I even called my mom"); C(119.9, 123.4, "because the play is so sad.")
+    C(123.8, 128.4, "And what do you think the responsibility of an audience is?", True); C(128.5, 130.0, "To pay attention"); C(130.2, 131.8, "and to respect the space."); C(132.3, 133.4, "That's it.")
+    lower_third(a, .5, 6.0, "Camilo Gonzalez", "Teacher")
+    a.raw(box(W // 2 - 300, 94, 600, 100, t0=.5, dur=3.6, alpha="&H40&"))
+    a.raw(f"Dialogue: 3,{tc(.5)},{tc(4.1)},Big,,0,0,0,,{{\\an5\\pos({W // 2},144)\\fad(400,400)}}A {{\\c{A_GOLD}}}SECOND VOICE")
+    a.write(os.path.join(EDIT, "s8b.ass"))
+    m = os.path.join(EDIT, "m8b.mp4"); render_montage(theater_pool(["08_velvet", "06_stage_lights", "03_horseshoe", "07_masks", "02_auditorium", "04_elizabethan", "05_curtains", "01_empty_stage", "07_masks", "03_horseshoe"]), dur, m)
+    add("08b_interview_camilo", dur, scene("08b_interview_camilo", dur, (m,), (pre, 0), os.path.join(EDIT, "s8b.ass"), frame, gain_db=gb, vid_kind="raw"))
 
     # S9 closing B-roll (slow zoom out) then end card
     s0, s1 = 141.0, 149.2; dur = s1 - s0; a = Ass(s0)
