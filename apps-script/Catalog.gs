@@ -17,7 +17,7 @@ function getCatalogCached_() {
   if (hit) return JSON.parse(hit);
   var catalog = buildCatalog_();
   var text = JSON.stringify(catalog);
-  if (text.length < 90000) cache.put(CACHE_KEY, text, CACHE_SECONDS); // límite de CacheService: 100 KB
+  if (text.length < 90000) cachePut_(CACHE_KEY, text, CACHE_SECONDS); // límite de CacheService: 100 KB
   return catalog;
 }
 

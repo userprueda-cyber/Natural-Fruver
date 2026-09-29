@@ -83,7 +83,7 @@ test('an order decrements stock, uses server prices and gets a number', () => {
     items: [
       { id: 'mango-tommy', cantidad: 2.5 },
       { id: 'aguacate-papelillo', cantidad: 3, precio: 1 }, // client price is ignored
-      { id: 'banano', cantidad: 1.2 } // rounded to 1 kg; stock not tracked
+      { id: 'banano', cantidad: 1.2 } // rounded to 1.25 kg (quarter-kilo steps); stock not tracked
     ]
   });
   assert.equal(res.ok, true, JSON.stringify(res));
@@ -91,7 +91,7 @@ test('an order decrements stock, uses server prices and gets a number', () => {
   assert.equal(product(env, 'mango-tommy').stock, 17.5);
   assert.equal(product(env, 'aguacate-papelillo').stock, 37);
   assert.equal(product(env, 'banano').stock, '');
-  const expected = 2.5 * 5000 + 3 * 2500 + 1 * 3000;
+  const expected = 2.5 * 5000 + 3 * 2500 + 1.25 * 3000;
   assert.equal(res.subtotal, expected);
   assert.equal(res.domicilio, 4000);
   assert.equal(res.total, expected + 4000);

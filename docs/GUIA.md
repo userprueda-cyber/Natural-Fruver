@@ -1,11 +1,11 @@
-# Guía de Natural Fruver: catálogo en línea
+# Guía de Natural Fruver: pedidos por WhatsApp
 
-Esta guía explica cómo poner en marcha el catálogo (una sola vez) y cómo usarlo en el día a día.
+Esta guía explica cómo poner en marcha la hoja y la página de trabajadores (una sola vez) y cómo usarlas en el día a día. La conexión con WhatsApp está en **[WHATSAPP.md](WHATSAPP.md)**.
 
-- **Clientes**: abren la página, buscan productos, arman su pedido y lo envían por WhatsApp.
-- **Trabajadores**: desde el celular agregan productos, cambian precios y ofertas, marcan agotados y atienden los pedidos.
+- **Clientes**: escriben al WhatsApp de la tienda, ven el catálogo, arman el carrito y confirman el pedido con el bot.
+- **Trabajadores**: por WhatsApp (comandos como *precio mango 5500*) o desde la página de trabajadores cambian precios y ofertas, marcan agotados y atienden los pedidos.
 - **Todo queda en una hoja de Google Sheets** que el dueño puede abrir cuando quiera.
-- **Costo: $0.** Solo es opcional comprar un dominio propio (unos $60.000 al año).
+- **Costo: $0** para responder a los clientes. Ver costos en [WHATSAPP.md](WHATSAPP.md).
 
 ---
 
@@ -34,7 +34,7 @@ Abre la pestaña **Config** y completa como mínimo:
 | clave | ejemplo | qué es |
 |---|---|---|
 | `whatsapp` | `573001234567` | Número que recibe los pedidos: 57 + celular, sin espacios ni + |
-| `horario` | `lun-sab 07:00-19:00; dom 08:00-13:00` | La página muestra "Abierto" o "Cerrado" con este horario |
+| `horario` | `lun-sab 07:00-19:00; dom 08:00-13:00` | El bot dice "Abierto" o "Cerrado" con este horario |
 | `direccion_tienda` | `Cra 8 # 20-15, Pereira` | |
 | `domicilio_valor` | `4000` | Valor del domicilio (0 = gratis) |
 | `domicilio_gratis_desde` | `60000` | Domicilio gratis desde este valor (0 = nunca) |
@@ -50,13 +50,13 @@ Abre la pestaña **Config** y completa como mínimo:
 4. **Implementar** y copia la **URL de la aplicación web** (termina en `/exec`).
 5. En la hoja: **Natural Fruver → 2. Activar tareas automáticas**.
 
-### 1.5 Conectar la página
+### 1.5 Conectar la página de trabajadores
 1. En este proyecto, abre `site/js/config.js` y pega la URL:
    ```js
    window.NF_CONFIG = { API_URL: 'https://script.google.com/macros/s/XXXX/exec' };
    ```
-2. En GitHub: **Settings → Pages → Source: GitHub Actions**. Al subir los cambios a `main`, la página se publica sola.
-3. Pon el enlace en la **biografía de Instagram** y en el **perfil de WhatsApp Business**.
+2. En GitHub: **Settings → Pages → Source: GitHub Actions**. Al subir los cambios a `main`, se publica sola: la página de trabajadores queda en `…/admin.html` y la dirección principal lleva directo al WhatsApp de la tienda (sirve para la **biografía de Instagram**).
+3. Sigue con **[WHATSAPP.md](WHATSAPP.md)** para conectar el bot.
 
 > Si más adelante cambias el código de Apps Script: **Implementar → Gestionar implementaciones → ✏️ → Versión: Nueva versión → Implementar**. Así la URL sigue siendo la misma.
 
@@ -104,11 +104,11 @@ Para cargar muchos productos de una vez, pégalos en la pestaña *Productos* res
 
 ## 4. Preguntas frecuentes
 
-**¿Qué pasa si el cliente arma el pedido pero no envía el WhatsApp?**
-El pedido queda *Pendiente* y los productos separados. Si nadie lo confirma en las horas configuradas, se cancela solo y el inventario vuelve.
+**¿Qué pasa si el cliente envía el carrito pero no confirma?**
+No se crea ningún pedido ni se separa inventario hasta que toca *Confirmar*. Los pedidos confirmados que nadie atiende en las horas configuradas se cancelan solos y el inventario vuelve.
 
 **¿Y si alguien hace pedidos falsos?**
-Se cancelan solos por la misma regla. Además, la página tiene una trampa para robots y el precio siempre se calcula en la hoja, no en el celular del cliente.
+Se cancelan solos por la misma regla. Además, el precio siempre se calcula en la hoja, no con lo que diga el carrito, y cada pedido queda con el número de WhatsApp del cliente.
 
 **Olvidé mi PIN / alguien se fue de la tienda.**
 El dueño lo cambia o pone `activo = no` en la pestaña *Trabajadores*.

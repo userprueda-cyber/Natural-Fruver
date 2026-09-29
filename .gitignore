@@ -2,3 +2,11 @@ node_modules/
 .clasp.json
 .DS_Store
 __pycache__/
+.telegram-state.json
+.env
+.env.*
+.dev.vars
+.wrangler/
+relay/.wrangler/
+*.local.json
+exports/

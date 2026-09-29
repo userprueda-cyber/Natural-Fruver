@@ -17,8 +17,94 @@ var DEFAULT_CONFIG = [
   ['ocultar_agotados', 'no', 'si = los agotados no aparecen; no = aparecen como "Agotado"'],
   ['horas_cancelar_pendientes', 3, 'Pedidos sin confirmar se cancelan solos después de estas horas y el inventario vuelve (0 = nunca)'],
   ['stock_minimo_alerta', 2, 'El resumen diario avisa de productos con este inventario o menos'],
-  ['correo_resumen', '', 'Correo para el resumen diario (vacío = no se envía)']
+  ['correo_resumen', '', 'Correo para el resumen diario (vacío = no se envía)'],
+  ['url_fotos', 'https://userprueda-cyber.github.io/Natural-Fruver/', 'Dirección pública donde están las fotos de img/productos (para el catálogo de WhatsApp)'],
+  ['plantilla_aviso_pedido', '', 'Plantilla aprobada por Meta para avisar pedidos a trabajadores que no han escrito al bot en 24 h (vacío = no se usa)'],
+  // ── Datos del negocio que el bot solo dice si están llenos (vacío = "un asesor le confirma") ──
+  ['metodos_pago', '', 'Formas de pago separadas por coma. Ej: Efectivo contraentrega, Nequi, Transferencia (vacío = el bot no pregunta y no promete)'],
+  ['datos_pago', '', 'Datos para pagar (Nequi, cuenta). Se muestran SOLO después de confirmar un pedido con pago no efectivo'],
+  ['politica_peso', '', 'Cómo se cobra la diferencia de peso. Ej: Se cobra el peso real; te avisamos si cambia más de 10%'],
+  ['politica_cancelacion', '', 'Hasta cuándo se puede cambiar o cancelar. Ej: Hasta que el pedido salga a domicilio'],
+  ['politica_sustitucion', '', 'Qué hacer si algo se agota. Ej: Te llamamos para reemplazarlo'],
+  ['horario_festivos', '', 'Horario en festivos: "cerrado" o como 08:30-14:00 (vacío = el bot dice que un asesor confirma)'],
+  ['hora_corte_mismo_dia', '', 'Hora límite para entregar el mismo día, ej 14:00 (vacío = no se promete)'],
+  ['pedido_grande_desde', 300000, 'Pedidos desde este valor los revisa una persona antes de confirmar (0 = nunca)'],
+  ['numero_respaldo', '', 'WhatsApp de respaldo si nadie atiende a un cliente que pidió asesor'],
+  ['url_politica_datos', 'https://userprueda-cyber.github.io/Natural-Fruver/privacidad.html', 'Política de tratamiento de datos (Ley 1581)'],
+  ['contacto_datos_personales', '', 'Correo o teléfono del responsable de datos personales'],
+  // ── Funcionamiento del bot ──
+  ['modo_bot', 'asistido', 'sombra = los trabajadores aprueban cada respuesta; asistido = el bot responde, los pedidos los confirma una persona; autonomo'],
+  ['bot_pausado', 'no', 'si = el bot no responde a clientes (todo lo atiende una persona). Comandos: pausar / reanudar'],
+  ['espera_rafaga_seg', 4, 'Segundos que espera el bot por si el cliente sigue escribiendo (0 = no espera)'],
+  ['mensajes_por_minuto', 20, 'Máximo de mensajes por minuto de un número antes de ignorarlo un rato'],
+  ['minutos_escalar_asesor', 10, 'Si nadie atiende a un cliente que pidió asesor en estos minutos, se avisa al número de respaldo'],
+  ['minutos_devolver_bot', 120, 'Minutos sin mensajes de la persona antes de que el bot vuelva a atender ese chat'],
+  ['horas_recordatorio_carrito', 3, 'Recordar una vez un pedido sin terminar después de estas horas (0 = nunca)'],
+  ['sugerir', 'si', 'si = al terminar el pedido, el bot sugiere UN producto en oferta o destacado (una vez por pedido)'],
+  ['hora_resumen', 20, 'Hora del resumen diario por WhatsApp a los trabajadores (vacío = no se envía)'],
+  ['correo_alertas', '', 'Correo para alertas técnicas (token vencido, fallas)'],
+  ['plantilla_estado_pedido', '', 'Plantilla de Meta para avisar cambios de estado si el cliente no ha escrito en 24 h (vacío = se avisa al trabajador)'],
+  ['ia_activa', 'no', 'si = usar IA para entender mensajes difíciles (solo cuando las reglas no alcanzan)'],
+  ['ia_proveedor', 'ollama', 'ollama = modelo local gratis (ia_url debe ser alcanzable); anthropic = Claude Haiku (ANTHROPIC_API_KEY en Propiedades del script)'],
+  ['ia_url', 'http://localhost:11434', 'Dirección de Ollama. Desde Apps Script debe ser pública (túnel con OLLAMA_TOKEN)'],
+  ['ia_modelo', 'qwen2.5:14b', 'Modelo (Ollama: qwen2.5:14b; Anthropic: claude-haiku-4-5)'],
+  ['ia_presupuesto_mes_usd', 10, 'Gasto máximo de IA al mes (USD). Al llegar, el bot sigue funcionando sin IA'],
+  ['ia_presupuesto_dia_usd', 0.6, 'Gasto máximo de IA al día (USD)'],
+  ['ia_llamadas_hora', 10, 'Máximo de consultas a la IA por cliente por hora'],
+  ['ia_llamadas_dia', 30, 'Máximo de consultas a la IA por cliente por día'],
+  ['audio_activo', 'no', 'si = transcribir notas de voz. Requiere DEEPGRAM_API_KEY en Propiedades del script'],
+  ['audio_max_dia', 5, 'Notas de voz transcritas por cliente por día']
 ];
+
+// Unidades que entiende el bot (pestaña Unidades, editable).
+var DEFAULT_UNITS = [
+  ['lb', 'lb, lbs, libra, libras', 500],
+  ['kg', 'kg, kgs, kilo, kilos, kl, k, kilogramo, kilogramos', 1000],
+  ['unidad', 'und, unds, unidad, unidades, u, uds, cabeza, cabezas', ''],
+  ['atado', 'atado, atados, manojo, manojos, mazo, mazos', ''],
+  ['canasta', 'canasta, canastas, panal, panales, cubeta, cubetas', ''],
+  ['paquete', 'paquete, paquetes, paq, bolsa, bolsas', ''],
+  ['bandeja', 'bandeja, bandejas', '']
+];
+
+// Nombres regionales o comunes de algunos productos (columna alias).
+var SAMPLE_ALIASES = {
+  'banano': 'guineo, bananos',
+  'mango-tommy': 'mango, tommy',
+  'aguacate-papelillo': 'aguacate, papelillo, palta',
+  'mora-de-castilla': 'mora, moras',
+  'limon-tahiti': 'limon, limones',
+  'tomate-chonto': 'chonto, tomate riñon',
+  'cebolla-larga': 'cebolla junca, junca, cebolla de rama, cebollin',
+  'papa-pastusa': 'pastusa',
+  'papa-criolla': 'criolla, papa amarilla',
+  'cebolla-cabezona-blanca': 'cebolla cabezona',
+  'huevos-aa-x-30': 'panal de huevos, cubeta de huevos, huevos',
+  'sandia': 'patilla',
+  'pimenton-mixto': 'pimenton, pimentones',
+  'pepino-cohombro': 'pepino, cohombro',
+  'guayaba-manzana': 'guayaba, guayabas',
+  'granadilla': 'granadillas',
+  'uchuva': 'uchuvas',
+  'lulo': 'lulos',
+  'repollo-verde': 'repollo, repollos',
+  'ajo': 'ajos, cabeza de ajo'
+};
+
+/** Agrega a Config las claves que falten (sin tocar las que ya existen). */
+function addMissingConfig_() {
+  var config = ss_().getSheetByName(SHEETS.CONFIG);
+  var existing = {};
+  table_(SHEETS.CONFIG).rows.forEach(function (r) { existing[String(r.clave).trim()] = true; });
+  DEFAULT_CONFIG.forEach(function (row) { if (!existing[row[0]]) config.appendRow(row); });
+  var units = ss_().getSheetByName(SHEETS.UNITS);
+  if (units && units.getLastRow() < 2) units.getRange(2, 1, DEFAULT_UNITS.length, 3).setValues(DEFAULT_UNITS);
+}
+
+// Meta no permite bebidas alcohólicas en los catálogos de WhatsApp.
+function sampleInWhatsApp_(nombre) {
+  return /^cerveza/i.test(nombre) ? 'no' : 'si';
+}
 
 var SAMPLE_CATEGORIES = [
   ['Frutas', '🍓', 1],
@@ -178,17 +264,23 @@ function setup() {
   var orders = ensureSheet_(ss, SHEETS.ORDERS, ORDER_HEADERS);
   var config = ensureSheet_(ss, SHEETS.CONFIG, CONFIG_HEADERS);
   var workers = ensureSheet_(ss, SHEETS.WORKERS, WORKER_HEADERS);
+  var clients = ensureSheet_(ss, SHEETS.CLIENTS, CLIENT_HEADERS);
+  ensureSheet_(ss, SHEETS.UNITS, UNIT_HEADERS);
+  ensureSheet_(ss, SHEETS.USAGE, USAGE_HEADERS);
+  ensureSheet_(ss, SHEETS.UNRESOLVED, UNRESOLVED_HEADERS);
+  ensureSheet_(ss, SHEETS.AUDIT, AUDIT_HEADERS);
 
   // Texto plano para columnas que Sheets podría "convertir" (PIN 0123, teléfonos, números de pedido).
   workers.getRange('B:B').setNumberFormat('@');
+  workers.getRange('D:D').setNumberFormat('@');
+  clients.getRange('A:A').setNumberFormat('@');
   orders.getRange('A:A').setNumberFormat('@');
   orders.getRange('E:E').setNumberFormat('@');
   products.getRange('A:A').setNumberFormat('@');
 
-  // Config: agrega solo las claves que falten.
-  var existing = {};
-  table_(SHEETS.CONFIG).rows.forEach(function (r) { existing[String(r.clave).trim()] = true; });
-  DEFAULT_CONFIG.forEach(function (row) { if (!existing[row[0]]) config.appendRow(row); });
+  // Config y Unidades: agrega solo lo que falte.
+  addMissingConfig_();
+  PropertiesService.getScriptProperties().setProperty('SCHEMA_VERSION', String(SCHEMA_VERSION));
 
   if (categories.getLastRow() < 2) {
     categories.getRange(2, 1, SAMPLE_CATEGORIES.length, 3).setValues(SAMPLE_CATEGORIES);
@@ -203,7 +295,8 @@ function setup() {
       ids[id] = true;
       writeRow_(t, {
         id: id, nombre: s[0], categoria: s[1], precio: s[2], unidad: s[3], precio_oferta: s[4],
-        stock: s[5], disponible: 'si', destacado: s[6], foto_url: samplePhoto_(id), palabras_clave: s[7], orden: (i + 1) * 10,
+        stock: s[5], disponible: 'si', destacado: s[6], foto_url: samplePhoto_(id), palabras_clave: s[7], orden: (i + 1) * 10, en_whatsapp: sampleInWhatsApp_(s[0]),
+        alias: SAMPLE_ALIASES[id] || '',
         actualizado: new Date(), actualizado_por: 'ejemplo'
       });
     });
@@ -221,14 +314,20 @@ function setup() {
   addValidation_(products, 'unidad', ['kg', 'lb', 'unidad', 'atado', 'canasta', 'paquete', 'bandeja']);
   addValidation_(orders, 'estado', ORDER_STATES);
   addValidation_(workers, 'activo', ['si', 'no']);
+  addValidation_(products, 'en_whatsapp', ['si', 'no']);
 
   photoFolder_();
   invalidateCatalog_();
 
+  // Clave que comparte el relé de Cloudflare con este script (ver relay/README.md).
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('RELAY_SECRET')) props.setProperty('RELAY_SECRET', Utilities.getUuid().replace(/-/g, ''));
+
   var msg = 'Hojas listas.\n\n' +
-    '1) Escribe el número de WhatsApp en la pestaña Config.\n' +
+    '1) Escribe el WhatsApp de cada trabajador en la pestaña Trabajadores.\n' +
     '2) Menú Natural Fruver → Activar tareas automáticas.\n' +
-    '3) Implementar → Nueva implementación → Aplicación web (ver README).';
+    '3) Implementar → Nueva implementación → Aplicación web.\n' +
+    '4) Conecta WhatsApp siguiendo docs/WHATSAPP.md.';
   if (newPin) msg += '\n\nPIN del Administrador para la página de trabajadores: ' + newPin +
     '\n(puedes cambiarlo o agregar más trabajadores en la pestaña Trabajadores)';
   try { SpreadsheetApp.getUi().alert(msg); } catch (e) { console.log(msg); }

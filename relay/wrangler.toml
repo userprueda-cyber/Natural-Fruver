@@ -1,0 +1,22 @@
+name = "natural-fruver-whatsapp"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Secretos (no van aquí): npx wrangler secret put VERIFY_TOKEN / APP_SECRET / APPS_SCRIPT_URL / RELAY_SECRET
+
+# Opcionales: npx wrangler secret put WA_PHONE_ID / HEALTH_KEY
+
+# Cola durable (recomendada, plan Workers Paid US$5/mes): si Apps Script falla, el mensaje
+# se reintenta con espera en vez de perderse. Para activarla:
+#   npx wrangler queues create fruver-webhooks
+#   npx wrangler queues create fruver-webhooks-dlq
+# y quita los # de estas líneas:
+# [[queues.producers]]
+# binding = "QUEUE"
+# queue = "fruver-webhooks"
+#
+# [[queues.consumers]]
+# queue = "fruver-webhooks"
+# max_batch_size = 5
+# max_retries = 10
+# dead_letter_queue = "fruver-webhooks-dlq"

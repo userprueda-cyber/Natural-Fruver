@@ -27,7 +27,7 @@ function authWorker_(pin) {
     });
   }
   if (!worker) {
-    cache.put('pin_fails', String(fails + 1), PIN_LOCK_SECONDS);
+    cachePut_('pin_fails', fails + 1, PIN_LOCK_SECONDS);
     throw userError_('pin', 'PIN incorrecto.');
   }
   return worker;
@@ -62,7 +62,8 @@ function adminData_() {
       cliente: String(r.cliente), telefono: String(r.telefono), entrega: String(r.entrega),
       direccion: String(r.direccion), notas: String(r.notas), items: items,
       subtotal: num_(r.subtotal, 0), domicilio: num_(r.domicilio, 0), total: num_(r.total, 0),
-      actualizado_por: String(r.actualizado_por || '')
+      actualizado_por: String(r.actualizado_por || ''),
+      pago: String(r.pago || ''), revisar: truthy_(r.revisar) ? 'si' : ''
     };
   }).reverse();
   var open = orders.filter(function (o) { return FINAL_STATES.indexOf(o.estado) < 0; });
@@ -113,6 +114,7 @@ function saveProduct_(input, who) {
     writeRow_(t, row);
     SpreadsheetApp.flush();
     invalidateCatalog_();
+    syncCatalogQuietly_([row.id]);
     return { ok: true, id: row.id };
   } finally {
     lock.releaseLock();
@@ -186,6 +188,7 @@ function patchProduct_(id, patch, who) {
     writeRow_(t, row);
     SpreadsheetApp.flush();
     invalidateCatalog_();
+    syncCatalogQuietly_([String(id)]);
     return { ok: true, id: id };
   } finally {
     lock.releaseLock();

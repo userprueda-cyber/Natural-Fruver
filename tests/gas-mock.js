@@ -100,6 +100,9 @@ function createEnv() {
   const cache = new Map();
   const props = new Map();
   const sentMail = [];
+  // Llamadas a la API de WhatsApp/Meta: { url, payload }. fetchReply(url, payload) puede cambiar la respuesta.
+  const fetches = [];
+  const net = { reply: null };
   const folders = {};
   let lockHeld = false;
 
@@ -142,6 +145,8 @@ function createEnv() {
     Utilities: {
       formatDate,
       base64Decode: (s) => Buffer.from(s, 'base64'),
+      getUuid: () => require('crypto').randomUUID(),
+      sleep: () => {},
       newBlob: (bytes, type, name) => ({ bytes, type, name })
     },
     DriveApp: {
@@ -172,7 +177,22 @@ function createEnv() {
       createTextOutput: (text) => ({ text, setMimeType() { return this; } })
     },
     MailApp: { sendEmail: (to, subject, body) => sentMail.push({ to, subject, body }) },
-    ScriptApp: {
+    UrlFetchApp: {
+      fetch(url, opts) {
+        let payload = null;
+        if (opts && typeof opts.payload === 'string') { try { payload = JSON.parse(opts.payload); } catch (e) { payload = opts.payload; } }
+        else if (opts && opts.payload) payload = opts.payload;
+        fetches.push({ url, payload, headers: (opts && opts.headers) || {} });
+        const r = (net.reply && net.reply(url, payload, opts)) || { status: 200, body: { messages: [{ id: 'wamid.out' + fetches.length }] } };
+        if (r.throws) throw new Error(r.throws);
+        const text = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
+        return {
+          getResponseCode: () => r.status,
+          getContentText: () => text,
+          getContent: () => (r.bytes ? Array.from(r.bytes) : Array.from(Buffer.from(text)))
+        };
+      }
+    },    ScriptApp: {
       getProjectTriggers: () => [],
       deleteTrigger() {},
       newTrigger: () => {
@@ -188,7 +208,7 @@ function createEnv() {
     vm.runInContext(fs.readFileSync(path.join(dir, f), 'utf8'), context, { filename: f });
   });
 
-  return { gs: context, ss, cache, sentMail, folders, isLocked: () => lockHeld };
+  return { gs: context, ss, cache, props, sentMail, folders, fetches, net, isLocked: () => lockHeld };
 }
 
 module.exports = { createEnv };
