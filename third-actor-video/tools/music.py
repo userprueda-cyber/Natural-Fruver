@@ -56,7 +56,7 @@ def make(path, total, tl):
     tt = np.arange(n) / SR; env = np.full(n, .55)
     for name, s0, d in tl:
         m = (tt >= s0) & (tt < s0 + d)
-        if "title" in name or "end_card" in name: env[m] = 1.0
+        if "title" in name or "end_card" in name or "credits" in name: env[m] = 1.0
         elif "cold" in name: env[m] = .65
         elif "interview" in name: env[m] = .5
     lead = (tt < 1.5); env[lead] = 1.0

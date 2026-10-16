@@ -149,20 +149,53 @@ def render_card(kind, dur, out):
         p.stdin.write(np.clip(f, 0, 255).astype(np.uint8).tobytes())
     p.stdin.close(); p.wait()
 
+def render_credits(out, dur=9.0):
+    cr = json.load(open(os.path.join(ROOT, "theater_images", "credits.json"))) if os.path.exists(os.path.join(ROOT, "theater_images", "credits.json")) else []
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    spaced(d, (W / 2, 70), "THEATER  PHOTOGRAPHS", ImageFont.truetype(F_REG, 24), GOLD, 8)
+    divider(d, 104, 150)
+    f = ImageFont.truetype(F_REG, 19); y = 150
+    for e in cr:
+        t = e["title"].replace("File:", "").rsplit(".", 1)[0]
+        t = t if len(t) < 58 else t[:55] + "..."
+        d.text((W / 2, y), f"{t}  \u2014  {e['artist'].replace('User:', '')}, {e['license']}", font=f, fill=IVORY, anchor="mm"); y += 40
+    d.text((W / 2, y + 14), "via Wikimedia Commons", font=ImageFont.truetype(F_IT, 22), fill=GOLD, anchor="mm")
+    la = np.array(img, float); n = int(dur * FPS)
+    p = subprocess.Popen([FF, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
+                          "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p", out], stdin=subprocess.PIPE)
+    for i in range(n):
+        t = i / FPS; k = clamp01(t / .8) * clamp01((dur - t) / .8)
+        al = la[..., 3:4] / 255.0 * k; f_ = BACK * .35 * (1 - al) + la[..., :3] * al
+        p.stdin.write(np.clip(f_, 0, 255).astype(np.uint8).tobytes())
+    p.stdin.close(); p.wait()
+
 # ---- Ken Burns montage of theater images ------------------------------------
+PHOTO_I = [0]
 def theater_pool(names):
     photos = sorted(glob.glob(os.path.join(ROOT, "theater_images", "photo_*.*")))
     pool = []
     for n in names:
         pool.append(sorted(glob.glob(os.path.join(ROOT, "theater_images", n + "*")))[0])
     if photos:  # user-supplied real photos take over
-        pool = [photos[i % len(photos)] for i in range(len(names))]
+        pool = [photos[(PHOTO_I[0] + i) % len(photos)] for i in range(len(names))]
+        PHOTO_I[0] += len(names)
     return pool
+
+def fit169(im):
+    """Centre-crop to 16:9 (slightly above centre keeps stages/curtains), cap at 1920 wide, warm theme grade."""
+    from PIL import ImageEnhance
+    w, h = im.size
+    if w / h > 16 / 9: nw = int(h * 16 / 9); im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+    else: nh = int(w * 9 / 16); top = int((h - nh) * .4); im = im.crop((0, top, w, top + nh))
+    im = im.resize((1920, 1080), Image.LANCZOS)
+    a = np.asarray(im, np.float32) * np.array((1.04, 0.98, 0.90), np.float32)   # warm
+    im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    return ImageEnhance.Brightness(ImageEnhance.Color(im).enhance(.92)).enhance(.9)
 
 def render_montage(paths, dur, out, zoom_out=False, xfade=1.1):
     n = int(round(dur * FPS)); k = len(paths)
     seg = (dur + xfade * (k - 1)) / k
-    imgs = [Image.open(p).convert("RGB") for p in paths]
+    imgs = [fit169(Image.open(p).convert("RGB")) for p in paths]
     iw, ih = imgs[0].size
     p = subprocess.Popen([FF, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
                           "-c:v", "libx264", "-crf", "14", "-pix_fmt", "yuv420p", out], stdin=subprocess.PIPE)
@@ -302,6 +335,7 @@ def main():
     cards = []
     render_card("title", 5.0, os.path.join(EDIT, "card_title.mp4"))
     render_card("end", 6.0, os.path.join(EDIT, "card_end.mp4"))
+    render_credits(os.path.join(EDIT, "card_credits.mp4"), 9.0)
 
     scenes, tl = [], []           # tl: (scene name, start_in_output, duration)
     def add(name, dur, path): tl.append((name, sum(d for _, _, d in tl), dur)); scenes.append(path)
@@ -416,6 +450,9 @@ def main():
     m = os.path.join(EDIT, "m9.mp4"); render_montage(theater_pool(["01_empty_stage"]), dur, m, zoom_out=True)
     add("09_closing", dur, scene("09_closing", dur, (m,), (SRC_V, s0), os.path.join(EDIT, "s9.ass"), frame, gain_db=gv, vid_kind="raw"))
     add("10_end_card", 6.0, scene("10_end_card", 6.0, (os.path.join(EDIT, "card_end.mp4"),), None, None, fade_in=.01, fade_out=.01, vid_kind="raw"))
+
+    if glob.glob(os.path.join(ROOT, "theater_images", "credits.json")):
+        add("11_credits", 9.0, scene("11_credits", 9.0, (os.path.join(EDIT, "card_credits.mp4"),), None, None, fade_in=.01, fade_out=.01, vid_kind="raw"))
 
     # lossless concat (Hard Rule 2)
     lst = os.path.join(EDIT, "concat.txt"); open(lst, "w").write("".join(f"file '{p}'\n" for p in scenes))
